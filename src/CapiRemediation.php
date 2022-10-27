@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+namespace CrowdSec\RemediationEngine;
+
 class CapiRemediation extends AbstractRemediation implements RemediationEngineInferface
 {
 

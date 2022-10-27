@@ -1,5 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
+namespace CrowdSec\RemediationEngine\Client;
+
+use CrowdSec\RemediationEngine\Client\HttpMessage\Request;
+use CrowdSec\RemediationEngine\Client\HttpMessage\Response;
+use CrowdSec\RemediationEngine\Client\RequestHandler\RequestHandlerInterface;
+use CrowdSec\RemediationEngine\Client\RequestHandler\Curl;
 
 abstract class AbstractClient
 {
@@ -10,7 +18,7 @@ abstract class AbstractClient
     /**
      * @var string[]
      */
-    private $allowedMethods = ['POST', 'GET', 'DELETE'];
+    private $allowedMethods = ['POST', 'GET'];
     /**
      * @var RequestHandlerInterface
      */
@@ -89,7 +97,7 @@ abstract class AbstractClient
         $statusCode = $response->getStatusCode();
 
         $body = $response->getJsonBody();
-        $decoded = ['message' => ''];
+        $decoded = [];
         if (!empty($body)) {
             $decoded = json_decode($response->getJsonBody(), true);
 

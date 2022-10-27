@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+namespace CrowdSec\RemediationEngine;
+
 class LapiRemediation extends AbstractRemediation implements RemediationEngineInferface
 {
-
     public function getIpRemediation(string $ip): string
     {
         $streamMode = $this->getConfig('stream_code');
@@ -13,7 +16,15 @@ class LapiRemediation extends AbstractRemediation implements RemediationEngineIn
             $rawIpDecisions = [];
             if(!$streamMode){
                 // Call LAPI
-                $rawIpDecisions = $this->client->request('/v1/decisions', ['ip' => $ip]);
+                $request = $this->client->request(
+                    'GET',
+                    '/v1/decisions',
+                    ['ip' => $ip],
+                    [
+                        'User-Agent' => 'test',
+                        'X-Api-Key' => $this->client->getConfig('api_key')
+                    ]);
+                $rawIpDecisions = $request;
             }
             // Store decisions (store a bypass if none)
             $ipDecisions = $this->storeDecisions('Ip', $ip, $rawIpDecisions);
@@ -31,6 +42,7 @@ class LapiRemediation extends AbstractRemediation implements RemediationEngineIn
                 if(!$streamMode){
                     // Call LAPI
                     $rawCountryDecisions = $this->client->request(
+                        'GET',
                         '/v1/decisions',
                         ['scope' => 'Country', 'value' => $country]
                     );
@@ -43,9 +55,7 @@ class LapiRemediation extends AbstractRemediation implements RemediationEngineIn
 
         $decisions = array_merge($ipDecisions, $countryDecisions);
 
-        $decisions = $this->sortRemediationByPriority($decisions);
-
-        return $decisions[0][0];
+        return $decisions[0][0][0];
     }
 
 }

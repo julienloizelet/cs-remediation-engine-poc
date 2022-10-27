@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+namespace CrowdSec\RemediationEngine;
+
+use CrowdSec\RemediationEngine\CacheStorage\CacheStorageInterface;
+
 class Geolocation
 {
 

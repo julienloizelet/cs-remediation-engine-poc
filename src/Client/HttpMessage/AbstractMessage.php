@@ -1,5 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
+namespace CrowdSec\RemediationEngine\Client\HttpMessage;
+
+
 abstract class AbstractMessage
 {
     /**
