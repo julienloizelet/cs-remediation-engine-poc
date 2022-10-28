@@ -28,5 +28,12 @@ class Constants
     public const CACHE_TAG_REM = 'remediation';
     /** @var string origin for a decision from this lib */
     public const ORIGIN = 'remediation-engine';
-
+    /** @var int The duration we keep a bad IP in cache */
+    public const CACHE_EXPIRATION_FOR_BAD_IP = 120;
+    /** @var int The duration we keep a clean IP in cache */
+    public const CACHE_EXPIRATION_FOR_CLEAN_IP = 60;
+    /** @var string The CrowdSec Ip scope for decisions */
+    public const SCOPE_IP = 'Ip';
+    /** @var string The CrowdSec Range scope for decisions */
+    public const SCOPE_RANGE = 'Range';
 }

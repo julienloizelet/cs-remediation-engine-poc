@@ -4,64 +4,44 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine;
 
-use CrowdSec\RemediationEngine\Client\AbstractClient;
-use CrowdSec\RemediationEngine\CacheStorage\CacheStorageInterface;
+use CrowdSec\RemediationEngine\Client\ClientInterface;
+use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
 
 class AbstractRemediation
 {
 
     /**
-     * @var CacheStorageInterface
+     * @var AbstractCache
      */
     protected $cacheStorage;
+    /**
+     * @var ClientInterface
+     */
     protected $client;
     protected $configs;
-
-    public function __construct (array $configs, AbstractClient $client, CacheStorageInterface $cacheStorage){
-
-        // @TODO validate configs
-        $this->configs = $configs;
-        $this->client = $client;
-        $this->cacheStorage = $cacheStorage;
-
-    }
 
     /**
      * @param string $scope
      * @param string $value
-     * @param array $remoteDecisions
+     * @param array $decisions
      * @return array // array of cache item value
      */
-    public function storeDecisions(string $scope, string $value, array $remoteDecisions): array
+    public function storeDecisions(array $decisions): array
     {
+        //@TODO check rawDecision format validity
         $storedDecisions = [];
-        if(!$remoteDecisions){
-            // Store a bypass decision
-            $decision = new Decision( $scope, $value, Constants::REMEDIATION_BYPASS, Constants::ORIGIN, '', '');
+        foreach ($decisions as $decision) {
+            $cacheKey = $this->cacheStorage->getCacheKey($decision->getScope(), $decision->getValue());
             $cacheItem = $this->cacheStorage->storeDecision($decision);
-            $storedDecisions[] = $cacheItem->get();
-        }
-        foreach ($remoteDecisions as $remoteDecision){
-            $decision = new Decision(
-                $remoteDecision['scope'],
-                $remoteDecision['value'],
-                $remoteDecision['type'],
-                $remoteDecision['origin'],
-                $remoteDecision['duration'],
-                $remoteDecision['scenario'],
-                $remoteDecision['id'],
-
-            );
-            $cacheItem = $this->cacheStorage->storeDecision($decision);
-            $storedDecisions[] = $cacheItem->get();
+            $storedDecisions[$cacheKey] = $cacheItem->get();
         }
 
-        if($this->cacheStorage->commit()){
+        if ($this->cacheStorage->commit()) {
             return $storedDecisions;
         }
+
         return [];
     }
-
 
     /**
      * Retrieve a config value by name.
@@ -75,8 +55,17 @@ class AbstractRemediation
         return (isset($this->configs[$name])) ? $this->configs[$name] : $default;
     }
 
+    /**
+     * @param $scope
+     * @param $value
+     * @param $type
+     * @return Decision
+     */
+    protected function createInternalDecision($scope, $value, $type = Constants::REMEDIATION_BYPASS): Decision
+    {
+        return new Decision($scope, $value, $type, Constants::ORIGIN, '', '', 0);
 
-
+    }
 
     //@TODO : pullUpdates
 

@@ -84,9 +84,12 @@ class Decision
      */
     private static function addRemediationPriority(array $decision): array
     {
+
+        // @TODO handle custom ordered
         $prio = array_search($decision[0], Constants::ORDERED_REMEDIATIONS);
 
         // Consider every unknown type as a top priority
+        // @TODO use a fallback config for unknown remediation
         $decision[3] = false !== $prio ? $prio : 0;
 
         return $decision;

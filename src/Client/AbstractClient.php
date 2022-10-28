@@ -9,7 +9,7 @@ use CrowdSec\RemediationEngine\Client\HttpMessage\Response;
 use CrowdSec\RemediationEngine\Client\RequestHandler\RequestHandlerInterface;
 use CrowdSec\RemediationEngine\Client\RequestHandler\Curl;
 
-abstract class AbstractClient
+abstract class AbstractClient implements ClientInterface
 {
     /**
      * @var array

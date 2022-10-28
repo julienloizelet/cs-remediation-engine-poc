@@ -20,16 +20,10 @@ abstract class AbstractCache implements CacheStorageInterface
     protected $adapter;
     protected $configs;
 
-    public function __construct(array $configs)
-    {
-        // TODO validate configs
-        $this->configs = $configs;
-    }
-
     /**
      * Wrap the cacheAdapter to catch warnings.
      *
-     * @throws CacheException if the connection was not successful
+     * @throws CacheException
      * */
     public function commit(): bool
     {
@@ -63,13 +57,13 @@ abstract class AbstractCache implements CacheStorageInterface
     public function retrieveDecisions(string $scope, string $value): array
     {
 
-        return [];
-        // TODO: Implement retrieveDecisions() method.
-        return [[
-            'ban',
-            0,
-            0
-        ]];
+        $cacheKey = $this->getCacheKey($scope, $value);
+        $item = $this->adapter->getItem(base64_encode($cacheKey));
+
+        // Merge with existing decisions (if any).
+        $cachedDecisions = $item->isHit() ? $item->get() : [];
+
+        return $cachedDecisions;
     }
 
     /**
@@ -80,7 +74,7 @@ abstract class AbstractCache implements CacheStorageInterface
      */
     public function storeDecision(Decision $decision): CacheItemInterface
     {
-        $cacheKey = $this->getCacheKey($decision);
+        $cacheKey = $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
         // Merge with existing decisions (if any).
@@ -111,7 +105,7 @@ abstract class AbstractCache implements CacheStorageInterface
     {
         $streamMode = $this->getConfig('stream_mode', false);
         if (Constants::REMEDIATION_BYPASS === $decision->getType()) {
-            $duration = time() + $this->getConfig('cache_expiration_for_clean_ip', 0);
+            $duration = time() + $this->getConfig('clean_ip_cache_duration', 0);
             if ($streamMode) {
                 /**
                  * In stream mode we consider a clean IP forever... until the next resync.
@@ -128,7 +122,7 @@ abstract class AbstractCache implements CacheStorageInterface
 
         // Don't set a max duration in stream mode to avoid bugs. Only the stream update has to change the cache state.
         if (!$streamMode) {
-            $duration = min($this->getConfig('cache_expiration_for_bad_ip'), $duration);
+            $duration = min($this->getConfig('bad_ip_cache_duration'), $duration);
         }
 
         return [
@@ -165,12 +159,12 @@ abstract class AbstractCache implements CacheStorageInterface
         return (int)round($seconds);
     }
 
-    private function getCacheKey(Decision $decision): string
+    public function getCacheKey(string $scope, string $value): string
     {
 
         // @TODO replace unauthorized chars
-        return $decision->getScope() . self::CACHE_SEP . $decision->getValue();
-
+        // @TODO handle RANGE SCOPE as IP
+        return $scope . self::CACHE_SEP . $value;
     }
 
     /**
