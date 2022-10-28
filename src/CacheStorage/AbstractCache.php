@@ -74,12 +74,22 @@ abstract class AbstractCache implements CacheStorageInterface
      */
     public function storeDecision(Decision $decision): CacheItemInterface
     {
+
+        //@TODO manage Range scoped decision
         $cacheKey = $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
-        // Merge with existing decisions (if any).
+        // Retrieve cached decisions
         $cachedDecisions = $item->isHit() ? $item->get() : [];
-        $decisionsToCache = [array_merge($cachedDecisions, $this->formatForCache($decision))];
+
+        // Erase previous decision(s) with the same id
+        foreach($cachedDecisions as $itemKey => $itemValue){
+            if($itemValue[2] === $decision->getIdentifier()){
+                unset($cachedDecisions[$itemKey]);
+            }
+        }
+        // Merge current decision with cached decisions (if any).
+        $decisionsToCache = array_merge($cachedDecisions, [$this->formatForCache($decision)]);
 
         // Build the item lifetime in cache and sort remediations by priority
         $maxLifetime = max(array_column($decisionsToCache, 1));
@@ -134,7 +144,10 @@ abstract class AbstractCache implements CacheStorageInterface
 
     protected function parseDurationToSeconds(string $duration): int
     {
-        $re = '/(-?)(?:(?:(\d+)h)?(\d+)m)?(\d+).\d+(m?)s/m';
+        /**
+         * 3h24m59.5565s or 3h24m595ms
+         */
+        $re = '/(-?)(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)(?:.\d+)(m?)s)?/m';
         preg_match($re, $duration, $matches);
         if (!\count($matches)) {
             throw new \Exception('Unable to parse the following duration:' . $duration);
@@ -149,7 +162,7 @@ abstract class AbstractCache implements CacheStorageInterface
         if (isset($matches[4])) {
             $seconds += ((int)$matches[4]); // seconds
         }
-        if ('m' === ($matches[5])) { // units in milliseconds
+        if (isset($matches[5]) && 'm' === ($matches[5])) { // units in milliseconds
             $seconds *= 0.001;
         }
         if ('-' === ($matches[1])) { // negative

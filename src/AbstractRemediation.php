@@ -64,9 +64,29 @@ class AbstractRemediation
     protected function createInternalDecision($scope, $value, $type = Constants::REMEDIATION_BYPASS): Decision
     {
         return new Decision($scope, $value, $type, Constants::ORIGIN, '', '', 0);
-
     }
 
-    //@TODO : pullUpdates
+    private function convertRawDecision(array $rawDecision): Decision
+    {
+        // @TODO check and validate $rawDecision
+        return new Decision (
+            ucfirst($rawDecision['scope']),
+            $rawDecision['value'],
+            $rawDecision['type'],
+            $rawDecision['origin'],
+            $rawDecision['duration'],
+            $rawDecision['scenario'],
+            $rawDecision['id'] ?? 0
+        );
+    }
 
+    protected function convertRawDecisionsToDecisions(array $rawDecisions)
+    {
+        $decisions = [];
+        foreach ($rawDecisions as $rawDecision) {
+            $decisions[] = $this->convertRawDecision($rawDecision);
+        }
+
+        return $decisions;
+    }
 }

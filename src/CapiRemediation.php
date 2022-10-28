@@ -14,7 +14,6 @@ class CapiRemediation extends AbstractRemediation implements RemediationEngineIn
     public function __construct (array $configs, Watcher $client, AbstractCache $cacheStorage){
 
         $this->configure($configs);
-        /** @var Watcher client */
         $this->client = $client;
         $this->cacheStorage = $cacheStorage;
     }
@@ -42,5 +41,17 @@ class CapiRemediation extends AbstractRemediation implements RemediationEngineIn
         $processor = new Processor();
         $this->configs = $processor->processConfiguration($configuration, [$configs]);
     }
+
+
+    public function refreshDecisions(): array
+    {
+
+        $rawDecisions = $this->client->getStreamDecisions();
+        $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['new']);
+        return $this->storeDecisions($newDecisions);
+        // @TODO delete deleted Decision
+
+    }
+
 
 }
