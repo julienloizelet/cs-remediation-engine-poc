@@ -67,10 +67,10 @@ abstract class AbstractCache implements CacheStorageInterface
     }
 
     /**
-     * @param string $scope
-     * @param string $value
-     * @param Decision|null $decision
-     * @return bool
+     * @param Decision $decision
+     * @return CacheItemInterface
+     * @throws \Psr\Cache\CacheException
+     * @throws \Psr\Cache\InvalidArgumentException
      */
     public function storeDecision(Decision $decision): CacheItemInterface
     {
@@ -92,8 +92,8 @@ abstract class AbstractCache implements CacheStorageInterface
         $decisionsToCache = array_merge($cachedDecisions, [$this->formatForCache($decision)]);
 
         // Build the item lifetime in cache and sort remediations by priority
-        $maxLifetime = max(array_column($decisionsToCache, 1));
-        $prioritizedDecisions = Decision::sortDecisionsByRemediationPriority($decisionsToCache);
+        $maxLifetime = max(array_column($decisionsToCache, 'duration'));
+        $prioritizedDecisions = $this->sortDecisionsByRemediationPriority($decisionsToCache);
 
         $item->set($prioritizedDecisions);
         $item->expiresAt(new \DateTime('@' . $maxLifetime));
@@ -111,41 +111,72 @@ abstract class AbstractCache implements CacheStorageInterface
         return $item;
     }
 
+    /**
+     * Sort the decision array of a cache item, by remediation priorities.
+     */
+    private function sortDecisionsByRemediationPriority(array $decisions): array
+    {
+        // Sort by priorities.
+        /** @var callable $compareFunction */
+        $compareFunction = self::class . '::comparePriorities';
+        usort($decisions, $compareFunction);
+
+        return $decisions;
+    }
+
+    /**
+     * Compare two priorities.
+     */
+    private static function comparePriorities(array $a, array $b): int
+    {
+        $a = $a['priority'];
+        $b = $b['priority'];
+        if ($a == $b) {
+            return 0;
+        }
+
+        return ($a < $b) ? -1 : 1;
+    }
+
     protected function formatForCache(Decision $decision): array
     {
         $streamMode = $this->getConfig('stream_mode', false);
         if (Constants::REMEDIATION_BYPASS === $decision->getType()) {
-            $duration = time() + $this->getConfig('clean_ip_cache_duration', 0);
-            if ($streamMode) {
-                /**
-                 * In stream mode we consider a clean IP forever... until the next resync.
-                 * in this case, forever is 10 years as PHP_INT_MAX will cause trouble with the Memcached Adapter
-                 * (int to float unwanted conversion)
-                 * */
-                $duration = 315360000;
-            }
+            /**
+             * In stream mode we consider a clean IP forever... until the next resync.
+             * in this case, forever is 10 years as PHP_INT_MAX will cause trouble with the Memcached Adapter
+             * (int to float unwanted conversion)
+             */
+            $duration = $streamMode ? 315360000 : time() + $this->getConfig('clean_ip_cache_duration', 0);
 
-            return [Constants::REMEDIATION_BYPASS, $duration, $decision->getIdentifier()];
+            return [
+                'type' => Constants::REMEDIATION_BYPASS,
+                'duration' => $duration,
+                'identifier' => $decision->getIdentifier(),
+                'priority' => $decision->getPriority()
+                ];
         }
 
         $duration = $this->parseDurationToSeconds($decision->getDuration());
 
         // Don't set a max duration in stream mode to avoid bugs. Only the stream update has to change the cache state.
         if (!$streamMode) {
+            // @TODO : avec CAPI, on considère qu'on est toujours en stream mode ? i.e force config stream_mode  true ?
             $duration = min($this->getConfig('bad_ip_cache_duration'), $duration);
         }
 
         return [
-            $decision->getType(),
-            time() + $duration,
-            $decision->getIdentifier(),
+            'type' => $decision->getType(),
+            'duration' => time() + $duration,
+            'identifier' => $decision->getIdentifier(),
+            'priority' => $decision->getPriority()
         ];
     }
 
     protected function parseDurationToSeconds(string $duration): int
     {
         /**
-         * 3h24m59.5565s or 3h24m595ms
+         * 3h24m59.5565s or 3h24m5957ms or 149h, etc.
          */
         $re = '/(-?)(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)(?:.\d+)(m?)s)?/m';
         preg_match($re, $duration, $matches);

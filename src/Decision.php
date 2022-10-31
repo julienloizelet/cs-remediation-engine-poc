@@ -7,17 +7,18 @@ namespace CrowdSec\RemediationEngine;
 
 class Decision
 {
+    private const ID_SEP = '-';
     private $duration;
     private $identifier;
     private $origin;
+    private $priority;
     private $scenario;
     private $scope;
     private $type;
     private $value;
 
-    private const ID_SEP = '-';
-
     public function __construct(
+        AbstractRemediation $remediation,
         string $scope,
         string $value,
         string $type,
@@ -28,11 +29,17 @@ class Decision
     {
         $this->scope = $scope;
         $this->value = $value;
-        $this->type = $type;
         $this->origin = $origin;
         $this->duration = $duration;
         $this->scenario = $scenario;
+
+
+        $orderedRemediation = $remediation->getConfig('ordered_remediations');
+        $fallbackRemediation = $remediation->getConfig('fallback_remediation');
+        $this->type = in_array($type, $orderedRemediation) ? $type : $fallbackRemediation;
         $this->identifier = $id > 0 ? (string)$id : $this->type . self::ID_SEP . $this->origin;
+        // Add numerical priority allowing easy sorting.
+        $this->priority = array_search($this->type, $orderedRemediation);
     }
 
     public function getDuration(): string
@@ -43,6 +50,11 @@ class Decision
     public function getIdentifier(): string
     {
         return $this->identifier;
+    }
+
+    public function getPriority(): int
+    {
+        return $this->priority;
     }
 
     public function getScope(): string
@@ -58,57 +70,6 @@ class Decision
     public function getValue(): string
     {
         return $this->value;
-    }
-
-    /**
-     * Sort the decision array of a cache item, by remediation priorities.
-     */
-    public static function sortDecisionsByRemediationPriority(array $decisions): array
-    {
-        // Add priorities.
-        $decisionsWithPriorities = [];
-        foreach ($decisions as $key => $decision) {
-            $decisionsWithPriorities[$key] = self::addRemediationPriority($decision);
-        }
-
-        // Sort by priorities.
-        /** @var callable $compareFunction */
-        $compareFunction = self::class . '::comparePriorities';
-        usort($decisionsWithPriorities, $compareFunction);
-
-        return $decisionsWithPriorities;
-    }
-
-    /**
-     * Add numerical priority allowing easy sorting.
-     */
-    private static function addRemediationPriority(array $decision): array
-    {
-
-        // @TODO handle custom ordered
-        $prio = array_search($decision[0], Constants::ORDERED_REMEDIATIONS);
-
-        // Consider every unknown type as a top priority
-        // @TODO use a fallback config for unknown remediation
-        $decision[3] = false !== $prio ? $prio : 0;
-
-        return $decision;
-    }
-
-    /**
-     * Compare two priorities.
-     * @noinspection PhpUnusedPrivateMethodInspection
-     * @SuppressWarnings(PHPMD.UnusedPrivateMethod)
-     */
-    private static function comparePriorities(array $a, array $b): int
-    {
-        $a = $a[3];
-        $b = $b[3];
-        if ($a == $b) {
-            return 0;
-        }
-
-        return ($a < $b) ? -1 : 1;
     }
 
 }

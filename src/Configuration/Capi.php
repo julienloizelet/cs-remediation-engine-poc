@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine\Configuration;
 
+use CrowdSec\RemediationEngine\CapiRemediation;
 use CrowdSec\RemediationEngine\Constants;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -26,19 +27,13 @@ class Capi implements ConfigurationInterface
      */
     public function getConfigTreeBuilder(): TreeBuilder
     {
+        $defaultOrderedRemediations = CapiRemediation::ORDERED_REMEDIATIONS;
         $treeBuilder = new TreeBuilder('config');
         /** @var ArrayNodeDefinition $rootNode */
         $rootNode = $treeBuilder->getRootNode();
         $rootNode->children()
-            ->enumNode('fallback_remediation')
-                ->values(
-                    [
-                        Constants::REMEDIATION_BYPASS,
-                        Constants::REMEDIATION_BAN,
-                        Constants::REMEDIATION_CAPTCHA
-                    ]
-                )
-                ->defaultValue(Constants::REMEDIATION_BYPASS)
+            ->scalarNode('fallback_remediation')
+                ->defaultValue($defaultOrderedRemediations[1])
             ->end()
             ->arrayNode('ordered_remediations')->cannotBeEmpty()
                 ->validate()
@@ -49,11 +44,38 @@ class Capi implements ConfigurationInterface
                 ->end()
                 ->scalarPrototype()->cannotBeEmpty()
                 ->end()
-            ->defaultValue(Constants::ORDERED_REMEDIATIONS)
+            ->defaultValue(CapiRemediation::ORDERED_REMEDIATIONS)
             ->end()
         ->end()
         ;
+        $this->validate($rootNode);
 
         return $treeBuilder;
+    }
+
+
+
+    /**
+     * Conditional validation
+     *
+     * @param NodeDefinition|ArrayNodeDefinition $rootNode
+     * @return void
+     * @throws InvalidArgumentException
+     * @throws RuntimeException
+     */
+    private function validate($rootNode)
+    {
+        $rootNode->validate()
+            ->ifTrue(function (array $v) {
+                return !in_array($v['fallback_remediation'], $v['ordered_remediations']);
+            })
+            ->thenInvalid('Fallback remediation must belong to ordered remediations')
+            ->end()
+            ->validate()
+            ->ifTrue(function (array $v) {
+                return !in_array(Constants::REMEDIATION_BYPASS, $v['ordered_remediations']);
+            })
+            ->thenInvalid('Bypass remediation must belong to ordered remediations.')
+            ->end();
     }
 }

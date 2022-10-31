@@ -18,16 +18,22 @@ if (!$ip) {
 }
 
 // Init Client
-$clientConfigs = ['scenarios' => ['crowdsecurity/http-sensitive-files']];
+$clientConfigs = [
+    'machine_id_prefix' => 'remediationtest',
+    'scenarios' => ['crowdsecurity/http-sensitive-files']];
 $capiClient = new Watcher($clientConfigs, new FileStorage());
 
 // Init Cache storage
 $cacheConfigs = [
     'fs_cache_path' => __DIR__ . '/.cache',
+    'clean_ip_cache_duration' => 120,
+    'bad_ip_cache_duration' => 360
 ];
 $phpFileCache = new PhpFiles($cacheConfigs);
 
 
-$remediationEngine = new CapiRemediation([], $capiClient, $phpFileCache);
+$remediationConfigs = [];
+
+$remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $phpFileCache);
 
 echo $remediationEngine->getIpRemediation($ip) . PHP_EOL;

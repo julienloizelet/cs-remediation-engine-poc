@@ -11,6 +11,9 @@ use Symfony\Component\Config\Definition\Processor;
 
 class CapiRemediation extends AbstractRemediation implements RemediationEngineInferface
 {
+    /** @var array<string> The list of each known CAPI remediation, sorted by priority */
+    public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
+
     public function __construct (array $configs, Watcher $client, AbstractCache $cacheStorage){
 
         $this->configure($configs);
@@ -29,7 +32,7 @@ class CapiRemediation extends AbstractRemediation implements RemediationEngineIn
             return Constants::REMEDIATION_BYPASS;
         }
 
-        return $ipDecisions[0][0] ?? Constants::REMEDIATION_BYPASS;
+        return $ipDecisions[0]['type'] ?? Constants::REMEDIATION_BYPASS;
     }
 
     /**

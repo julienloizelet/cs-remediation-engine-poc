@@ -28,7 +28,6 @@ class AbstractRemediation
      */
     public function storeDecisions(array $decisions): array
     {
-        //@TODO check rawDecision format validity
         $storedDecisions = [];
         foreach ($decisions as $decision) {
             $cacheKey = $this->cacheStorage->getCacheKey($decision->getScope(), $decision->getValue());
@@ -63,13 +62,14 @@ class AbstractRemediation
      */
     protected function createInternalDecision($scope, $value, $type = Constants::REMEDIATION_BYPASS): Decision
     {
-        return new Decision($scope, $value, $type, Constants::ORIGIN, '', '', 0);
+        return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
     }
 
     private function convertRawDecision(array $rawDecision): Decision
     {
         // @TODO check and validate $rawDecision
         return new Decision (
+            $this,
             ucfirst($rawDecision['scope']),
             $rawDecision['value'],
             $rawDecision['type'],
