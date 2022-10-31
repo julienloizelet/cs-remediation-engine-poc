@@ -21,6 +21,11 @@ abstract class AbstractCache implements CacheStorageInterface
     protected $configs;
 
     /**
+     * @var array
+     */
+    private $cacheKeys = [];
+
+    /**
      * Wrap the cacheAdapter to catch warnings.
      *
      * @throws CacheException
@@ -82,7 +87,7 @@ abstract class AbstractCache implements CacheStorageInterface
         // Retrieve cached decisions
         $cachedDecisions = $item->isHit() ? $item->get() : [];
 
-        // Erase previous decision(s) with the same id
+        // Erase previous decision(s) with the same identifier
         foreach($cachedDecisions as $itemKey => $itemValue){
             if($itemValue[2] === $decision->getIdentifier()){
                 unset($cachedDecisions[$itemKey]);
@@ -203,12 +208,34 @@ abstract class AbstractCache implements CacheStorageInterface
         return (int)round($seconds);
     }
 
+    /**
+     * Cache key convention.
+     *
+     * @param string $scope
+     * @param string $value
+     * @return string
+     * @throws BouncerException
+     */
     public function getCacheKey(string $scope, string $value): string
     {
+        if (!isset($this->cacheKeys[$scope][$value])) {
+            /**
+             * Replace unauthorized symbols
+             * @see https://symfony.com/doc/current/components/cache/cache_items.html#cache-item-keys-and-values
+             *
+             */
+            $value = preg_replace('/[^A-Za-z0-9_.]/', self::CACHE_SEP , $value);
+            switch ($scope) {
+                case Constants::SCOPE_IP:
+                case Constants::SCOPE_RANGE:
+                    $this->cacheKeys[$scope][$value] = Constants::SCOPE_IP . self::CACHE_SEP . $value;
+                    break;
+                default:
+                    throw new CacheException('Unknown scope:' . $scope);
+            }
+        }
 
-        // @TODO replace unauthorized chars
-        // @TODO handle RANGE SCOPE as IP
-        return $scope . self::CACHE_SEP . $value;
+        return $this->cacheKeys[$scope][$value];
     }
 
     /**

@@ -97,9 +97,6 @@ class Curl implements RequestHandlerInterface
             \CURLOPT_USERAGENT => $headers['User-Agent'],
         ];
 
-        //@TODO tls_auth feature
-        $options[\CURLOPT_SSL_VERIFYPEER] = false;
-
         $options[\CURLOPT_HTTPHEADER] = [];
         foreach ($headers as $key => $values) {
             foreach (\is_array($values) ? $values : [$values] as $value) {
