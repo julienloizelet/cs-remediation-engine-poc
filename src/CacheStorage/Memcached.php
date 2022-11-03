@@ -27,6 +27,7 @@ class Memcached extends AbstractCache
         } catch (Exception $e) {
             throw new CacheException('Error when creating Memcached cache adapter:' . $e->getMessage());
         }
+        parent::__construct($this->configs);
     }
 
     /**

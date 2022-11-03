@@ -27,7 +27,6 @@ $capiClient = new Watcher($clientConfigs, new FileStorage());
 $cacheConfigs = [
     'fs_cache_path' => __DIR__ . '/.cache',
     'clean_ip_cache_duration' => 120,
-    'bad_ip_cache_duration' => 360
 ];
 $phpFileCache = new PhpFiles($cacheConfigs);
 

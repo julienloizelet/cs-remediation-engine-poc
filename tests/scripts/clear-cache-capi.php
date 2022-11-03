@@ -23,4 +23,4 @@ $phpFileCache = new PhpFiles($cacheConfigs);
 $remediationConfigs = [];
 $remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $phpFileCache);
 
-echo json_encode($remediationEngine->refreshDecisions()) . PHP_EOL;
+echo $remediationEngine->clearCache() . PHP_EOL;

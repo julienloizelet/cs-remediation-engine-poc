@@ -17,6 +17,8 @@ class CapiRemediation extends AbstractRemediation implements RemediationEngineIn
     public function __construct (array $configs, Watcher $client, AbstractCache $cacheStorage){
 
         $this->configure($configs);
+        // Force stream mode for CAPI remediation
+        $this->configs['stream_mode'] = true;
         $this->client = $client;
         $this->cacheStorage = $cacheStorage;
     }

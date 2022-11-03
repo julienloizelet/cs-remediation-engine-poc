@@ -7,7 +7,6 @@ namespace CrowdSec\RemediationEngine;
 interface RemediationEngineInferface
 {
 
-
     public function getIpRemediation(string $ip): string;
 
 }

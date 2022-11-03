@@ -7,7 +7,7 @@ namespace CrowdSec\RemediationEngine;
 use CrowdSec\RemediationEngine\Client\ClientInterface;
 use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
 
-class AbstractRemediation
+abstract class AbstractRemediation
 {
 
     /**
@@ -89,4 +89,16 @@ class AbstractRemediation
 
         return $decisions;
     }
+
+    public function clearCache(): bool
+    {
+        return $this->cacheStorage->clear();
+    }
+
+    public function pruneCache(): bool
+    {
+        return $this->cacheStorage->prune();
+    }
+
+    abstract public function refreshDecisions(): array;
 }

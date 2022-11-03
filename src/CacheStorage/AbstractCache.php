@@ -8,6 +8,7 @@ use CrowdSec\RemediationEngine\CacheStorage\Memcached\TagAwareAdapter as Memcach
 use Psr\Cache\CacheItemInterface;
 use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\PruneableInterface;
 use CrowdSec\RemediationEngine\Decision;
 use CrowdSec\RemediationEngine\Constants;
 
@@ -19,11 +20,47 @@ abstract class AbstractCache implements CacheStorageInterface
     /** @var TagAwareAdapter|MemcachedTagAwareAdapter|RedisTagAwareAdapter */
     protected $adapter;
     protected $configs;
+    protected $warmedUp;
 
     /**
      * @var array
      */
     private $cacheKeys = [];
+
+    public function __construct(array $configs)
+    {
+        $this->configs = $configs;
+        $cacheConfigItem = $this->adapter->getItem('cacheConfig');
+        $cacheConfig = $cacheConfigItem->get();
+        $this->warmedUp = (\is_array($cacheConfig) && isset($cacheConfig['warmed_up'])
+                           && true === $cacheConfig['warmed_up']);
+    }
+
+    public function clear(): bool
+    {
+        $this->setCustomErrorHandler();
+        try {
+            $cleared = $this->adapter->clear();
+        } finally {
+            $this->unsetCustomErrorHandler();
+        }
+        $this->warmedUp = false;
+        $this->defferUpdateCacheConfig(['warmed_up' => $this->warmedUp]);
+        $this->commit();
+
+        return $cleared;
+    }
+
+    public function prune(): bool
+    {
+        if ($this->adapter instanceof PruneableInterface) {
+            $pruned = $this->adapter->prune();
+
+            return $pruned;
+        }
+
+        throw new CacheException('Cache Adapter ' . \get_class($this->adapter) . ' is not prunable.');
+    }
 
     /**
      * Wrap the cacheAdapter to catch warnings.
@@ -40,6 +77,36 @@ abstract class AbstractCache implements CacheStorageInterface
         }
 
         return $result;
+    }
+
+    /**
+     * Cache key convention.
+     *
+     * @param string $scope
+     * @param string $value
+     * @return string
+     * @throws BouncerException
+     */
+    public function getCacheKey(string $scope, string $value): string
+    {
+        if (!isset($this->cacheKeys[$scope][$value])) {
+            /**
+             * Replace unauthorized symbols
+             * @see https://symfony.com/doc/current/components/cache/cache_items.html#cache-item-keys-and-values
+             *
+             */
+            $value = preg_replace('/[^A-Za-z0-9_.]/', self::CACHE_SEP, $value);
+            switch ($scope) {
+                case Constants::SCOPE_IP:
+                case Constants::SCOPE_RANGE:
+                    $this->cacheKeys[$scope][$value] = Constants::SCOPE_IP . self::CACHE_SEP . $value;
+                    break;
+                default:
+                    throw new CacheException('Unknown scope:' . $scope);
+            }
+        }
+
+        return $this->cacheKeys[$scope][$value];
     }
 
     /**
@@ -61,7 +128,6 @@ abstract class AbstractCache implements CacheStorageInterface
 
     public function retrieveDecisions(string $scope, string $value): array
     {
-
         $cacheKey = $this->getCacheKey($scope, $value);
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
@@ -79,7 +145,6 @@ abstract class AbstractCache implements CacheStorageInterface
      */
     public function storeDecision(Decision $decision): CacheItemInterface
     {
-
         //@TODO manage Range scoped decision
         $cacheKey = $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
@@ -88,8 +153,8 @@ abstract class AbstractCache implements CacheStorageInterface
         $cachedDecisions = $item->isHit() ? $item->get() : [];
 
         // Erase previous decision(s) with the same identifier
-        foreach($cachedDecisions as $itemKey => $itemValue){
-            if($itemValue[2] === $decision->getIdentifier()){
+        foreach ($cachedDecisions as $itemKey => $itemValue) {
+            if ($itemValue[2] === $decision->getIdentifier()) {
                 unset($cachedDecisions[$itemKey]);
             }
         }
@@ -107,40 +172,22 @@ abstract class AbstractCache implements CacheStorageInterface
         // Save the cache without committing it to the cache system.
         // Useful to improve performance when updating the cache.
         if (!$this->adapter->saveDeferred($item)) {
-            $message = 'cacheKey:'.$cacheKey.'. Unable to save this deferred item in cache: ' .
-                       $decision->getType(). 'for' . $decision->getDuration() .
-                       ', (decision: ' .$decision->getIdentifier().')';
+            $message = 'cacheKey:' . $cacheKey . '. Unable to save this deferred item in cache: ' .
+                       $decision->getType() . 'for' . $decision->getDuration() .
+                       ', (decision: ' . $decision->getIdentifier() . ')';
             throw new CacheException($message);
         }
 
         return $item;
     }
 
-    /**
-     * Sort the decision array of a cache item, by remediation priorities.
-     */
-    private function sortDecisionsByRemediationPriority(array $decisions): array
+    protected function defferUpdateCacheConfig(array $config): void
     {
-        // Sort by priorities.
-        /** @var callable $compareFunction */
-        $compareFunction = self::class . '::comparePriorities';
-        usort($decisions, $compareFunction);
-
-        return $decisions;
-    }
-
-    /**
-     * Compare two priorities.
-     */
-    private static function comparePriorities(array $a, array $b): int
-    {
-        $a = $a['priority'];
-        $b = $b['priority'];
-        if ($a == $b) {
-            return 0;
-        }
-
-        return ($a < $b) ? -1 : 1;
+        $cacheConfigItem = $this->adapter->getItem('cacheConfig');
+        $cacheConfig = $cacheConfigItem->isHit() ? $cacheConfigItem->get() : [];
+        $cacheConfig = array_replace_recursive($cacheConfig, $config);
+        $cacheConfigItem->set($cacheConfig);
+        $this->adapter->saveDeferred($cacheConfigItem);
     }
 
     protected function formatForCache(Decision $decision): array
@@ -159,14 +206,13 @@ abstract class AbstractCache implements CacheStorageInterface
                 'duration' => $duration,
                 'identifier' => $decision->getIdentifier(),
                 'priority' => $decision->getPriority()
-                ];
+            ];
         }
 
         $duration = $this->parseDurationToSeconds($decision->getDuration());
 
         // Don't set a max duration in stream mode to avoid bugs. Only the stream update has to change the cache state.
         if (!$streamMode) {
-            // @TODO : avec CAPI, on considère qu'on est toujours en stream mode ? i.e force config stream_mode  true ?
             $duration = min($this->getConfig('bad_ip_cache_duration'), $duration);
         }
 
@@ -209,33 +255,17 @@ abstract class AbstractCache implements CacheStorageInterface
     }
 
     /**
-     * Cache key convention.
-     *
-     * @param string $scope
-     * @param string $value
-     * @return string
-     * @throws BouncerException
+     * Compare two priorities.
      */
-    public function getCacheKey(string $scope, string $value): string
+    private static function comparePriorities(array $a, array $b): int
     {
-        if (!isset($this->cacheKeys[$scope][$value])) {
-            /**
-             * Replace unauthorized symbols
-             * @see https://symfony.com/doc/current/components/cache/cache_items.html#cache-item-keys-and-values
-             *
-             */
-            $value = preg_replace('/[^A-Za-z0-9_.]/', self::CACHE_SEP , $value);
-            switch ($scope) {
-                case Constants::SCOPE_IP:
-                case Constants::SCOPE_RANGE:
-                    $this->cacheKeys[$scope][$value] = Constants::SCOPE_IP . self::CACHE_SEP . $value;
-                    break;
-                default:
-                    throw new CacheException('Unknown scope:' . $scope);
-            }
+        $a = $a['priority'];
+        $b = $b['priority'];
+        if ($a == $b) {
+            return 0;
         }
 
-        return $this->cacheKeys[$scope][$value];
+        return ($a < $b) ? -1 : 1;
     }
 
     /**
@@ -252,6 +282,19 @@ abstract class AbstractCache implements CacheStorageInterface
                 throw new CacheException($message);
             });
         }
+    }
+
+    /**
+     * Sort the decision array of a cache item, by remediation priorities.
+     */
+    private function sortDecisionsByRemediationPriority(array $decisions): array
+    {
+        // Sort by priorities.
+        /** @var callable $compareFunction */
+        $compareFunction = self::class . '::comparePriorities';
+        usort($decisions, $compareFunction);
+
+        return $decisions;
     }
 
     /**

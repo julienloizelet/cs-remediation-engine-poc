@@ -24,6 +24,7 @@ class Redis extends AbstractCache
         } catch (Exception $e) {
             throw new CacheException('Error when creating Redis cache adapter:' . $e->getMessage());
         }
+        parent::__construct($this->configs);
     }
 
     /**
