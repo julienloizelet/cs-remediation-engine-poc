@@ -12,20 +12,25 @@ use Symfony\Component\Cache\PruneableInterface;
 use CrowdSec\RemediationEngine\Decision;
 use CrowdSec\RemediationEngine\Constants;
 
-abstract class AbstractCache implements CacheStorageInterface
+abstract class AbstractCache
 {
 
     public const CACHE_SEP = '_';
 
     /** @var TagAwareAdapter|MemcachedTagAwareAdapter|RedisTagAwareAdapter */
     protected $adapter;
+    /**
+     * @var array
+     */
     protected $configs;
-    protected $warmedUp;
-
     /**
      * @var array
      */
     private $cacheKeys = [];
+    /**
+     * @var bool
+     */
+    private $warmedUp;
 
     public function __construct(array $configs)
     {
@@ -49,17 +54,6 @@ abstract class AbstractCache implements CacheStorageInterface
         $this->commit();
 
         return $cleared;
-    }
-
-    public function prune(): bool
-    {
-        if ($this->adapter instanceof PruneableInterface) {
-            $pruned = $this->adapter->prune();
-
-            return $pruned;
-        }
-
-        throw new CacheException('Cache Adapter ' . \get_class($this->adapter) . ' is not prunable.');
     }
 
     /**
@@ -121,9 +115,59 @@ abstract class AbstractCache implements CacheStorageInterface
         return (isset($this->configs[$name])) ? $this->configs[$name] : $default;
     }
 
-    public function removeDecision(Decision $decision): bool
+    public function prune(): bool
     {
-        // TODO: Implement removeDecision() method.
+        if ($this->adapter instanceof PruneableInterface) {
+            $pruned = $this->adapter->prune();
+
+            return $pruned;
+        }
+
+        throw new CacheException('Cache Adapter ' . \get_class($this->adapter) . ' is not prunable.');
+    }
+
+    public function removeDecision(Decision $decision): CacheItemInterface
+    {
+        //@TODO manage Range scoped decision
+        $cacheKey = $this->getCacheKey($decision->getScope(), $decision->getValue());
+        $item = $this->adapter->getItem(base64_encode($cacheKey));
+
+        // Retrieve cached decisions
+        if($item->isHit()){
+            $cachedDecisions = $item->get();
+            // Remove decision with the same identifier
+            $index = array_search($decision->getIdentifier(), array_column($cachedDecisions, 'identifier'));
+            if (false === $index) {
+                return $item;
+            }
+            unset($cachedDecisions[$index]);
+            if(!$cachedDecisions){
+                $this->adapter->deleteItem(base64_encode($cacheKey));
+                return $this->adapter->getItem(base64_encode($cacheKey));
+            }
+            $item = $this->updateCacheItem($item, $cachedDecisions, Constants::CACHE_TAG_REM);
+            if (!$this->adapter->saveDeferred($item)) {
+                $message = 'Unable to save this deferred item in cache: ' . $cacheKey;
+                // @TODO log message
+            }
+        }
+
+        return $item;
+    }
+
+    private function updateCacheItem(CacheItemInterface $item, array $decisionsToCache, string $tag): CacheItemInterface
+    {
+        // Compute lifetime
+        $maxLifetime = max(array_column($decisionsToCache, 'duration'));
+        // Sort decisions by remediation priority
+        $prioritizedDecisions = $this->sortDecisionsByRemediationPriority($decisionsToCache);
+
+        $item->set($prioritizedDecisions);
+        $item->expiresAt(new \DateTime('@' . $maxLifetime));
+        $item->tag($tag);
+
+        return $item;
+
     }
 
     public function retrieveDecisions(string $scope, string $value): array
@@ -154,28 +198,18 @@ abstract class AbstractCache implements CacheStorageInterface
 
         // Erase previous decision(s) with the same identifier
         foreach ($cachedDecisions as $itemKey => $itemValue) {
-            if ($itemValue[2] === $decision->getIdentifier()) {
+            if ($itemValue['identifier'] === $decision->getIdentifier()) {
                 unset($cachedDecisions[$itemKey]);
             }
         }
         // Merge current decision with cached decisions (if any).
         $decisionsToCache = array_merge($cachedDecisions, [$this->formatForCache($decision)]);
+        // Rebuild cache item
+        $item = $this->updateCacheItem($item, $decisionsToCache, Constants::CACHE_TAG_REM);
 
-        // Build the item lifetime in cache and sort remediations by priority
-        $maxLifetime = max(array_column($decisionsToCache, 'duration'));
-        $prioritizedDecisions = $this->sortDecisionsByRemediationPriority($decisionsToCache);
-
-        $item->set($prioritizedDecisions);
-        $item->expiresAt(new \DateTime('@' . $maxLifetime));
-        $item->tag(Constants::CACHE_TAG_REM);
-
-        // Save the cache without committing it to the cache system.
-        // Useful to improve performance when updating the cache.
         if (!$this->adapter->saveDeferred($item)) {
-            $message = 'cacheKey:' . $cacheKey . '. Unable to save this deferred item in cache: ' .
-                       $decision->getType() . 'for' . $decision->getDuration() .
-                       ', (decision: ' . $decision->getIdentifier() . ')';
-            throw new CacheException($message);
+            $message = 'Unable to save this deferred item in cache: ' . $cacheKey;
+            // @TODO log message
         }
 
         return $item;

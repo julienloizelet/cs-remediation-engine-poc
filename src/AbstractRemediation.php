@@ -20,26 +20,9 @@ abstract class AbstractRemediation
     protected $client;
     protected $configs;
 
-    /**
-     * @param string $scope
-     * @param string $value
-     * @param array $decisions
-     * @return array // array of cache item value
-     */
-    public function storeDecisions(array $decisions): array
+    public function clearCache(): bool
     {
-        $storedDecisions = [];
-        foreach ($decisions as $decision) {
-            $cacheKey = $this->cacheStorage->getCacheKey($decision->getScope(), $decision->getValue());
-            $cacheItem = $this->cacheStorage->storeDecision($decision);
-            $storedDecisions[$cacheKey] = $cacheItem->get();
-        }
-
-        if ($this->cacheStorage->commit()) {
-            return $storedDecisions;
-        }
-
-        return [];
+        return $this->cacheStorage->clear();
     }
 
     /**
@@ -54,30 +37,41 @@ abstract class AbstractRemediation
         return (isset($this->configs[$name])) ? $this->configs[$name] : $default;
     }
 
-    /**
-     * @param $scope
-     * @param $value
-     * @param $type
-     * @return Decision
-     */
-    protected function createInternalDecision($scope, $value, $type = Constants::REMEDIATION_BYPASS): Decision
+    abstract public function getIpRemediation(string $ip): string;
+
+    public function pruneCache(): bool
     {
-        return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
+        return $this->cacheStorage->prune();
     }
 
-    private function convertRawDecision(array $rawDecision): Decision
+    abstract public function refreshDecisions(): bool;
+
+    /**
+     * @param array $decisions
+     * @return bool
+     */
+    public function storeDecisions(array $decisions): bool
     {
-        // @TODO check and validate $rawDecision
-        return new Decision (
-            $this,
-            ucfirst($rawDecision['scope']),
-            $rawDecision['value'],
-            $rawDecision['type'],
-            $rawDecision['origin'],
-            $rawDecision['duration'],
-            $rawDecision['scenario'],
-            $rawDecision['id'] ?? 0
-        );
+        foreach ($decisions as $decision) {
+            // Save the cache without committing it to improve performance.
+            $this->cacheStorage->storeDecision($decision);
+        }
+
+        return $this->cacheStorage->commit();
+    }
+
+    /**
+     * @param array $decisions
+     * @return bool
+     */
+    public function removeDecisions(array $decisions): bool
+    {
+        foreach ($decisions as $decision) {
+            // Save the cache without committing it to improve performance.
+            $this->cacheStorage->removeDecision($decision);
+        }
+
+        return $this->cacheStorage->commit();
     }
 
     protected function convertRawDecisionsToDecisions(array $rawDecisions)
@@ -90,15 +84,46 @@ abstract class AbstractRemediation
         return $decisions;
     }
 
-    public function clearCache(): bool
+    /**
+     * @param $scope
+     * @param $value
+     * @param $type
+     * @return Decision
+     */
+    protected function createInternalDecision($scope, $value, $type = Constants::REMEDIATION_BYPASS): Decision
     {
-        return $this->cacheStorage->clear();
+        return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
     }
 
-    public function pruneCache(): bool
+    private function validateRawDecision(array $rawDecision): void
     {
-        return $this->cacheStorage->prune();
+        if (isset(
+            $rawDecision['scope'],
+            $rawDecision['value'],
+            $rawDecision['type'],
+            $rawDecision['origin'],
+            $rawDecision['duration'],
+            $rawDecision['scenario'],
+        )
+        ) {
+            return;
+        }
+
+        throw new RemediationException('Raw decision is not as expected: ' . json_encode($rawDecision));
     }
 
-    abstract public function refreshDecisions(): array;
+    private function convertRawDecision(array $rawDecision): Decision
+    {
+        $this->validateRawDecision($rawDecision);
+        return new Decision (
+            $this,
+            ucfirst($rawDecision['scope']),
+            $rawDecision['value'],
+            $rawDecision['type'],
+            $rawDecision['origin'],
+            $rawDecision['duration'],
+            $rawDecision['scenario'],
+            $rawDecision['id'] ?? 0
+        );
+    }
 }
