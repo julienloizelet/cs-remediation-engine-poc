@@ -82,7 +82,8 @@ class Decision
             'scope' => $this->getScope(),
             'value' => $this->getValue(),
             'type' => $this->getType(),
-            'priority' => $this->getPriority()
+            'priority' => $this->getPriority(),
+            'duration' => $this->getDuration()
         ];
 
     }

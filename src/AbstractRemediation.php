@@ -74,7 +74,7 @@ abstract class AbstractRemediation
             $this->cacheStorage->removeDecision($decision);
         }
 
-        return $this->cacheStorage->commit();
+        return $decisions ? $this->cacheStorage->commit() : true;
     }
 
     /**
@@ -85,15 +85,11 @@ abstract class AbstractRemediation
     {
         /** @var Decision $decision */
         foreach ($decisions as $decision) {
-            $this->logger->debug('', [
-                'type' => 'DECISION_STORE',
-                'decision' => $decision->toArray(),
-            ]);
             // Save the cache without committing it to improve performance.
             $this->cacheStorage->storeDecision($decision);
         }
 
-        return $this->cacheStorage->commit();
+        return $decisions ? $this->cacheStorage->commit() : true;
     }
 
     protected function convertRawDecisionsToDecisions(array $rawDecisions)
