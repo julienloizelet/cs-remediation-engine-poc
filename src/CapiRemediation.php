@@ -52,7 +52,7 @@ class CapiRemediation extends AbstractRemediation
 
         //@TODO manage Range scoped decision
 
-        return $ipDecisions[0]['type'] ?? Constants::REMEDIATION_BYPASS;
+        return $ipDecisions[0][AbstractCache::INDEX_VALUE] ?? Constants::REMEDIATION_BYPASS;
     }
 
     /**
@@ -67,8 +67,8 @@ class CapiRemediation extends AbstractRemediation
 
     public function refreshDecisions(): bool
     {
-        //$rawDecisions = $this->client->getStreamDecisions();
-        $rawDecisions = [
+        $rawDecisions = $this->client->getStreamDecisions();
+        /*$rawDecisions = [
             'deleted' => [],
             'new' => [
                 ["duration" => "147h",
@@ -84,7 +84,7 @@ class CapiRemediation extends AbstractRemediation
                     "type" => "bypass",
                     "value" => "52.3.230.0/24"]
             ]
-        ];
+        ];*/
         $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['new'] ?? []);
         $deletedDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['deleted'] ?? []);
 

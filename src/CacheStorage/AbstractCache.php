@@ -33,6 +33,12 @@ abstract class AbstractCache
     private const RANGE_BUCKET_TAG = 'RANGE_BUCKET';
 
 
+    public const INDEX_VALUE = 0;
+    private const INDEX_EXP = 1;
+    private const INDEX_ID = 2;
+    private const INDEX_PRIO = 3;
+
+
 
     /** @var TagAwareAdapter|MemcachedTagAwareAdapter|RedisTagAwareAdapter */
     protected $adapter;
@@ -216,40 +222,6 @@ abstract class AbstractCache
         return $item;
     }
 
-    protected function formatForCache(Decision $decision): array
-    {
-        $streamMode = $this->getConfig('stream_mode', false);
-        if (Constants::REMEDIATION_BYPASS === $decision->getType()) {
-            /**
-             * In stream mode we consider a clean IP forever... until the next resync.
-             * in this case, forever is 10 years as PHP_INT_MAX will cause trouble with the Memcached Adapter
-             * (int to float unwanted conversion)
-             */
-            $duration = $streamMode ? 315360000 : time() + $this->getConfig('clean_ip_cache_duration', 0);
-
-            return [
-                'type' => Constants::REMEDIATION_BYPASS,
-                'duration' => $duration,
-                'identifier' => $decision->getIdentifier(),
-                'priority' => $decision->getPriority()
-            ];
-        }
-
-        $duration = $this->parseDurationToSeconds($decision->getDuration());
-
-        // Don't set a max duration in stream mode to avoid bugs. Only the stream update has to change the cache state.
-        if (!$streamMode) {
-            $duration = min($this->getConfig('bad_ip_cache_duration'), $duration);
-        }
-
-        return [
-            'type' => $decision->getType(),
-            'duration' => time() + $duration,
-            'identifier' => $decision->getIdentifier(),
-            'priority' => $decision->getPriority()
-        ];
-    }
-
     protected function parseDurationToSeconds(string $duration): int
     {
         /**
@@ -285,8 +257,8 @@ abstract class AbstractCache
      */
     private static function comparePriorities(array $a, array $b): int
     {
-        $a = $a['priority'];
-        $b = $b['priority'];
+        $a = $a[self::INDEX_PRIO];
+        $b = $b[self::INDEX_PRIO];
         if ($a == $b) {
             return 0;
         }
@@ -299,13 +271,68 @@ abstract class AbstractCache
         return $this->adapter->getItem(base64_encode(self::FAKE_ITEM));
     }
 
+    /**
+     * Format decision to use a minimal amount of data (less cache data consumption)
+     *
+     * @param Decision $decision
+     * @return array
+     * @throws \Exception
+     *
+     */
+    private function formatForCache(Decision $decision): array
+    {
+        $streamMode = $this->getConfig('stream_mode', false);
+        if (Constants::REMEDIATION_BYPASS === $decision->getType()) {
+            /**
+             * In stream mode we consider a clean IP forever... until the next resync.
+             * in this case, forever is 10 years as PHP_INT_MAX will cause trouble with the Memcached Adapter
+             * (int to float unwanted conversion)
+             */
+            $duration = $streamMode ? 315360000 : $this->getConfig('clean_ip_cache_duration', 0);
+
+            return [
+                self::INDEX_VALUE => Constants::REMEDIATION_BYPASS,
+                self::INDEX_EXP => time() + $duration,
+                self::INDEX_ID => $decision->getIdentifier(),
+                self::INDEX_PRIO => $decision->getPriority()
+            ];
+        }
+
+        $duration = $this->parseDurationToSeconds($decision->getDuration());
+
+        // Don't set a max duration in stream mode to avoid bugs. Only the stream update has to change the cache state.
+        if (!$streamMode) {
+            $duration = min($this->getConfig('bad_ip_cache_duration'), $duration);
+        }
+
+        return [
+            self::INDEX_VALUE => $decision->getType(),
+            self::INDEX_EXP => time() + $duration,
+            self::INDEX_ID => $decision->getIdentifier(),
+            self::INDEX_PRIO => $decision->getPriority()
+        ];
+    }
+
+    /**
+     * Format range to use a minimal amount of data (less cache data consumption)
+     *
+     * @param string $rangeString
+     * @param string $duration
+     * @return array
+     * @throws \Exception
+     */
     private function formatIpV4RangeBucketForCache(string $rangeString, string $duration): array
     {
         return [
-            'range' => $rangeString,
-            'duration' => time() + $this->parseDurationToSeconds($duration)
+            self::INDEX_VALUE => $rangeString,
+            self::INDEX_EXP => time() + $this->parseDurationToSeconds($duration)
         ];
 
+    }
+
+    private function getMaxExpiration(array $itemsToCache): int
+    {
+        return max(array_column($itemsToCache, self::INDEX_EXP));
     }
 
     private function handleDecisionItem(Decision $decision): CacheItemInterface
@@ -318,7 +345,7 @@ abstract class AbstractCache
 
         // Erase previous decision(s) with the same identifier
         foreach ($cachedDecisions as $itemKey => $itemValue) {
-            if ($itemValue['identifier'] === $decision->getIdentifier()) {
+            if ($itemValue[self::INDEX_ID] === $decision->getIdentifier()) {
                 unset($cachedDecisions[$itemKey]);
             }
         }
@@ -337,14 +364,15 @@ abstract class AbstractCache
         $cachedRanges = $item->isHit() ? $item->get() : [];
         // Erase previous range(s) with the same range value
         foreach ($cachedRanges as $itemKey => $itemValue) {
-            if ($itemValue['range'] === $rangeValue) {
+            // @TODO unset expired item ? compare time() to itemValue[duration]
+            if ($itemValue[self::INDEX_VALUE] === $rangeValue) {
                 unset($cachedRanges[$itemKey]);
             }
         }
         // Merge current range with cached ranges (if any).
         $rangesToCache = array_merge($cachedRanges, [$this->formatIpV4RangeBucketForCache($rangeValue, $duration)]);
-        $maxLifetime = $this->getMaxDuration($rangesToCache);
-        $item->expiresAt(new \DateTime('@' . $maxLifetime));
+        $maxExpiration = $this->getMaxExpiration($rangesToCache);
+        $item->expiresAt(new \DateTime('@' . $maxExpiration));
         $item->set($rangesToCache);
         $item->tag(self::RANGE_BUCKET_TAG);
 
@@ -357,11 +385,6 @@ abstract class AbstractCache
         }
 
         return $item;
-    }
-
-    private function getMaxDuration(array $itemsToCache): int
-    {
-        return max(array_column($itemsToCache, 'duration'));
     }
 
     private function handleRangeScoped(Decision $decision): CacheItemInterface
@@ -438,12 +461,12 @@ abstract class AbstractCache
 
     private function updateCacheItem(CacheItemInterface $item, array $decisionsToCache, array $tags): CacheItemInterface
     {
-        $maxLifetime = $this->getMaxDuration($decisionsToCache);
+        $maxExpiration = $this->getMaxExpiration($decisionsToCache);
         // Sort decisions by remediation priority
         $prioritizedDecisions = $this->sortDecisionsByRemediationPriority($decisionsToCache);
 
         $item->set($prioritizedDecisions);
-        $item->expiresAt(new \DateTime('@' . $maxLifetime));
+        $item->expiresAt(new \DateTime('@' . $maxExpiration));
         $item->tag($tags);
 
         return $item;
