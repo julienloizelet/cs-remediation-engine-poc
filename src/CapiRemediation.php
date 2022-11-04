@@ -15,7 +15,7 @@ class CapiRemediation extends AbstractRemediation
     /**
      * @var Watcher
      */
-    protected $client;
+    private $client;
 
     /** @var array<string> The list of each known CAPI remediation, sorted by priority */
     public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
