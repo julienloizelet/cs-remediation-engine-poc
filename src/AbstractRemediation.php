@@ -6,19 +6,36 @@ namespace CrowdSec\RemediationEngine;
 
 use CrowdSec\RemediationEngine\Client\ClientInterface;
 use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
+use Monolog\Handler\NullHandler;
+use Monolog\Logger;
+use Psr\Log\LoggerInterface;
 
 abstract class AbstractRemediation
 {
-
     /**
      * @var AbstractCache
      */
     protected $cacheStorage;
     /**
-     * @var ClientInterface
+     * @var array
      */
-    protected $client;
     protected $configs;
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
+
+
+    public function __construct(array $configs, AbstractCache $cacheStorage, LoggerInterface $logger = null)
+    {
+        $this->configs = $configs;
+        $this->cacheStorage = $cacheStorage;
+        if (!$logger) {
+            $logger = new Logger('null');
+            $logger->pushHandler(new NullHandler());
+        }
+        $this->logger = $logger;
+    }
 
     public function clearCache(): bool
     {
@@ -50,11 +67,11 @@ abstract class AbstractRemediation
      * @param array $decisions
      * @return bool
      */
-    public function storeDecisions(array $decisions): bool
+    public function removeDecisions(array $decisions): bool
     {
         foreach ($decisions as $decision) {
             // Save the cache without committing it to improve performance.
-            $this->cacheStorage->storeDecision($decision);
+            $this->cacheStorage->removeDecision($decision);
         }
 
         return $this->cacheStorage->commit();
@@ -64,11 +81,11 @@ abstract class AbstractRemediation
      * @param array $decisions
      * @return bool
      */
-    public function removeDecisions(array $decisions): bool
+    public function storeDecisions(array $decisions): bool
     {
         foreach ($decisions as $decision) {
             // Save the cache without committing it to improve performance.
-            $this->cacheStorage->removeDecision($decision);
+            $this->cacheStorage->storeDecision($decision);
         }
 
         return $this->cacheStorage->commit();
@@ -95,23 +112,6 @@ abstract class AbstractRemediation
         return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
     }
 
-    private function validateRawDecision(array $rawDecision): void
-    {
-        if (isset(
-            $rawDecision['scope'],
-            $rawDecision['value'],
-            $rawDecision['type'],
-            $rawDecision['origin'],
-            $rawDecision['duration'],
-            $rawDecision['scenario'],
-        )
-        ) {
-            return;
-        }
-
-        throw new RemediationException('Raw decision is not as expected: ' . json_encode($rawDecision));
-    }
-
     private function convertRawDecision(array $rawDecision): Decision
     {
         $this->validateRawDecision($rawDecision);
@@ -125,5 +125,22 @@ abstract class AbstractRemediation
             $rawDecision['scenario'],
             $rawDecision['id'] ?? 0
         );
+    }
+
+    private function validateRawDecision(array $rawDecision): void
+    {
+        if (isset(
+            $rawDecision['scope'],
+            $rawDecision['value'],
+            $rawDecision['type'],
+            $rawDecision['origin'],
+            $rawDecision['duration'],
+            $rawDecision['scenario']
+        )
+        ) {
+            return;
+        }
+
+        throw new RemediationException('Raw decision is not as expected: ' . json_encode($rawDecision));
     }
 }

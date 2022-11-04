@@ -7,20 +7,31 @@ namespace CrowdSec\RemediationEngine;
 use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
 use CrowdSec\RemediationEngine\Configuration\Capi as CapiRemediationConfig;
 use CrowdSec\CapiClient\Watcher;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Config\Definition\Processor;
 
 class CapiRemediation extends AbstractRemediation
 {
+    /**
+     * @var Watcher
+     */
+    protected $client;
+
     /** @var array<string> The list of each known CAPI remediation, sorted by priority */
     public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
 
-    public function __construct(array $configs, Watcher $client, AbstractCache $cacheStorage)
+    public function __construct(
+        array $configs,
+        Watcher $client,
+        AbstractCache $cacheStorage,
+        LoggerInterface $logger = null
+    )
     {
         $this->configure($configs);
         // Force stream mode for CAPI remediation
         $this->configs['stream_mode'] = true;
         $this->client = $client;
-        $this->cacheStorage = $cacheStorage;
+        parent::__construct($this->configs, $cacheStorage, $logger);
     }
 
     public function getIpRemediation(string $ip): string
