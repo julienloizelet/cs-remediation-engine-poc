@@ -83,7 +83,12 @@ abstract class AbstractRemediation
      */
     public function storeDecisions(array $decisions): bool
     {
+        /** @var Decision $decision */
         foreach ($decisions as $decision) {
+            $this->logger->debug('', [
+                'type' => 'DECISION_STORE',
+                'decision' => $decision->toArray(),
+            ]);
             // Save the cache without committing it to improve performance.
             $this->cacheStorage->storeDecision($decision);
         }

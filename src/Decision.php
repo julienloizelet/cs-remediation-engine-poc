@@ -72,4 +72,19 @@ class Decision
         return $this->value;
     }
 
+    /**
+     * @return array
+     */
+    public function toArray(){
+
+        return [
+            'identifier' => $this->getIdentifier(),
+            'scope' => $this->getScope(),
+            'value' => $this->getValue(),
+            'type' => $this->getType(),
+            'priority' => $this->getPriority()
+        ];
+
+    }
+
 }
