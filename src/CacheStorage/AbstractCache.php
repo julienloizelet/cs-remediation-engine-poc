@@ -299,10 +299,11 @@ abstract class AbstractCache
         return $this->adapter->getItem(base64_encode(self::FAKE_ITEM));
     }
 
-    private function formatIpV4RangeBucketForCache(string $rangeString): array
+    private function formatIpV4RangeBucketForCache(string $rangeString, string $duration): array
     {
         return [
             'range' => $rangeString,
+            'duration' => time() + $this->parseDurationToSeconds($duration)
         ];
 
     }
@@ -328,7 +329,7 @@ abstract class AbstractCache
         return $this->updateCacheItem($item, $decisionsToCache, [Constants::CACHE_TAG_REM, $decision->getScope()]);
     }
 
-    private function handleRangeBucketItem(int $bucketInt, string $rangeValue): CacheItemInterface
+    private function handleRangeBucketItem(int $bucketInt, string $rangeValue, string $duration): CacheItemInterface
     {
         $cacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt);
         $item = $this->adapter->getItem(base64_encode($cacheKey));
@@ -341,8 +342,9 @@ abstract class AbstractCache
             }
         }
         // Merge current range with cached ranges (if any).
-        $rangesToCache = array_merge($cachedRanges, [$this->formatIpV4RangeBucketForCache($rangeValue)]);
-        // Rebuild cache item
+        $rangesToCache = array_merge($cachedRanges, [$this->formatIpV4RangeBucketForCache($rangeValue, $duration)]);
+        $maxLifetime = $this->getMaxDuration($rangesToCache);
+        $item->expiresAt(new \DateTime('@' . $maxLifetime));
         $item->set($rangesToCache);
         $item->tag(self::RANGE_BUCKET_TAG);
 
@@ -357,10 +359,16 @@ abstract class AbstractCache
         return $item;
     }
 
+    private function getMaxDuration(array $itemsToCache): int
+    {
+        return max(array_column($itemsToCache, 'duration'));
+    }
+
     private function handleRangeScoped(Decision $decision): CacheItemInterface
     {
         // @TODO exclude 32 bits system
         $rangeString = $decision->getValue();
+        $duration = $decision->getDuration();
         $range = Subnet::parseString($rangeString);
         if (null === $range) {
             $this->logger->warning('', [
@@ -384,7 +392,7 @@ abstract class AbstractCache
         $startInt = intdiv(ip2long($startAddress->toString()), self::IPV4_BUCKET_SIZE);
         $endInt = intdiv(ip2long($endAddress->toString()), self::IPV4_BUCKET_SIZE);
         for ($i = $startInt; $i <= $endInt; $i++){
-            $this->handleRangeBucketItem($i, $rangeString);
+            $this->handleRangeBucketItem($i, $rangeString, $duration);
         }
         return $this->handleDecisionItem($decision);
     }
@@ -430,8 +438,7 @@ abstract class AbstractCache
 
     private function updateCacheItem(CacheItemInterface $item, array $decisionsToCache, array $tags): CacheItemInterface
     {
-        // Compute lifetime
-        $maxLifetime = max(array_column($decisionsToCache, 'duration'));
+        $maxLifetime = $this->getMaxDuration($decisionsToCache);
         // Sort decisions by remediation priority
         $prioritizedDecisions = $this->sortDecisionsByRemediationPriority($decisionsToCache);
 

@@ -38,6 +38,10 @@ class CapiRemediation extends AbstractRemediation
     {
         // Ask cache for Ip scoped decision
         $ipDecisions = $this->cacheStorage->retrieveDecisions(Constants::SCOPE_IP, $ip);
+        // Ask cache for Range scoped decision
+        $rangeDecisions = $this->cacheStorage->retrieveDecisions(Constants::SCOPE_RANGE, $ip);
+
+
         if (!$ipDecisions) {
             // Store a bypass remediation if no cached decision found
             $decision = $this->createInternalDecision(Constants::SCOPE_IP, $ip);
@@ -73,12 +77,12 @@ class CapiRemediation extends AbstractRemediation
                     "scope" => "range",
                     "type" => "ban",
                     "value" => "52.3.230.0/24"],
-                ["duration" => "147h",
+                ["duration" => "150h",
                     "origin" => "CAPI",
                     "scenario" => "manual",
-                    "scope" => "ip",
-                    "type" => "ban",
-                    "value" => "1.2.3.4"]
+                    "scope" => "range",
+                    "type" => "bypass",
+                    "value" => "52.3.230.0/24"]
             ]
         ];
         $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['new'] ?? []);
