@@ -6,6 +6,7 @@ namespace CrowdSec\RemediationEngine\CacheStorage;
 
 use CrowdSec\RemediationEngine\CacheStorage\Memcached\TagAwareAdapter as MemcachedTagAwareAdapter;
 use CrowdSec\RemediationEngine\Configuration\Cache\Memcached as MemcachedCacheConfig;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 use Symfony\Component\Config\Definition\Processor;
 
@@ -14,20 +15,20 @@ class Memcached extends AbstractCache
 
     /**
      * @param array $configs
-     * @throws \ErrorException
-     * @throws \Symfony\Component\Cache\Exception\CacheException
+     * @param LoggerInterface|null $logger
+     * @throws CacheException
      */
-    public function __construct(array $configs)
+    public function __construct(array $configs, LoggerInterface $logger = null)
     {
         $this->configure($configs);
         try {
-            $this->adapter = new MemcachedTagAwareAdapter(
+            $adapter = new MemcachedTagAwareAdapter(
                 new MemcachedAdapter(MemcachedAdapter::createConnection($this->configs['memcached_dsn']))
             );
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw new CacheException('Error when creating Memcached cache adapter:' . $e->getMessage());
         }
-        parent::__construct($this->configs);
+        parent::__construct($this->configs, $adapter, $logger);
     }
 
     /**

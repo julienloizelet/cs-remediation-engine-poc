@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CrowdSec\RemediationEngine\CacheStorage;
 
 use CrowdSec\RemediationEngine\Configuration\Cache\Redis as RedisCacheConfig;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
 use Symfony\Component\Config\Definition\Processor;
@@ -14,17 +15,18 @@ class Redis extends AbstractCache
 
     /**
      * @param array $configs
+     * @param LoggerInterface|null $logger
      */
-    public function __construct(array $configs)
+    public function __construct(array $configs, LoggerInterface $logger = null)
     {
         $this->configure($configs);
 
         try {
-            $this->adapter = new RedisTagAwareAdapter((RedisAdapter::createConnection($this->configs['redis_dsn'])));
-        } catch (Exception $e) {
+            $adapter = new RedisTagAwareAdapter((RedisAdapter::createConnection($this->configs['redis_dsn'])));
+        } catch (\Exception $e) {
             throw new CacheException('Error when creating Redis cache adapter:' . $e->getMessage());
         }
-        parent::__construct($this->configs);
+        parent::__construct($this->configs, $adapter, $logger);
     }
 
     /**

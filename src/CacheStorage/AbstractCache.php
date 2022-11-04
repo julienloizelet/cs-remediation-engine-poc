@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace CrowdSec\RemediationEngine\CacheStorage;
 
 use CrowdSec\RemediationEngine\CacheStorage\Memcached\TagAwareAdapter as MemcachedTagAwareAdapter;
+use Monolog\Handler\NullHandler;
+use Monolog\Logger;
 use Psr\Cache\CacheItemInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
+use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\PruneableInterface;
 use CrowdSec\RemediationEngine\Decision;
 use CrowdSec\RemediationEngine\Constants;
@@ -24,21 +28,24 @@ abstract class AbstractCache
      */
     protected $configs;
     /**
+     * @var LoggerInterface
+     *
+     */
+    protected $logger;
+    /**
      * @var array
      */
     private $cacheKeys = [];
-    /**
-     * @var bool
-     */
-    private $warmedUp;
 
-    public function __construct(array $configs)
+    public function __construct(array $configs, TagAwareAdapterInterface $adapter, LoggerInterface $logger = null)
     {
         $this->configs = $configs;
-        $cacheConfigItem = $this->adapter->getItem('cacheConfig');
-        $cacheConfig = $cacheConfigItem->get();
-        $this->warmedUp = (\is_array($cacheConfig) && isset($cacheConfig['warmed_up'])
-                           && true === $cacheConfig['warmed_up']);
+        $this->adapter = $adapter;
+        if (!$logger) {
+            $logger = new Logger('null');
+            $logger->pushHandler(new NullHandler());
+        }
+        $this->logger = $logger;
     }
 
     public function clear(): bool
@@ -49,9 +56,6 @@ abstract class AbstractCache
         } finally {
             $this->unsetCustomErrorHandler();
         }
-        $this->warmedUp = false;
-        $this->defferUpdateCacheConfig(['warmed_up' => $this->warmedUp]);
-        $this->commit();
 
         return $cleared;
     }
@@ -79,7 +83,7 @@ abstract class AbstractCache
      * @param string $scope
      * @param string $value
      * @return string
-     * @throws BouncerException
+     * @throws CacheException
      */
     public function getCacheKey(string $scope, string $value): string
     {
@@ -118,9 +122,8 @@ abstract class AbstractCache
     public function prune(): bool
     {
         if ($this->adapter instanceof PruneableInterface) {
-            $pruned = $this->adapter->prune();
 
-            return $pruned;
+            return $this->adapter->prune();
         }
 
         throw new CacheException('Cache Adapter ' . \get_class($this->adapter) . ' is not prunable.');
@@ -133,7 +136,7 @@ abstract class AbstractCache
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
         // Retrieve cached decisions
-        if($item->isHit()){
+        if ($item->isHit()) {
             $cachedDecisions = $item->get();
             // Remove decision with the same identifier
             $index = array_search($decision->getIdentifier(), array_column($cachedDecisions, 'identifier'));
@@ -141,8 +144,9 @@ abstract class AbstractCache
                 return $item;
             }
             unset($cachedDecisions[$index]);
-            if(!$cachedDecisions){
+            if (!$cachedDecisions) {
                 $this->adapter->deleteItem(base64_encode($cacheKey));
+
                 return $this->adapter->getItem(base64_encode($cacheKey));
             }
             $item = $this->updateCacheItem($item, $cachedDecisions, Constants::CACHE_TAG_REM);
@@ -167,7 +171,6 @@ abstract class AbstractCache
         $item->tag($tag);
 
         return $item;
-
     }
 
     public function retrieveDecisions(string $scope, string $value): array
@@ -213,15 +216,6 @@ abstract class AbstractCache
         }
 
         return $item;
-    }
-
-    protected function defferUpdateCacheConfig(array $config): void
-    {
-        $cacheConfigItem = $this->adapter->getItem('cacheConfig');
-        $cacheConfig = $cacheConfigItem->isHit() ? $cacheConfigItem->get() : [];
-        $cacheConfig = array_replace_recursive($cacheConfig, $config);
-        $cacheConfigItem->set($cacheConfig);
-        $this->adapter->saveDeferred($cacheConfigItem);
     }
 
     protected function formatForCache(Decision $decision): array
