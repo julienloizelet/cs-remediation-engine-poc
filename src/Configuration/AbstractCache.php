@@ -30,6 +30,7 @@ abstract class AbstractCache implements ConfigurationInterface
     protected function addCommonNodes($rootNode)
     {
         $rootNode->children()
+            ->booleanNode('stream_mode')->defaultFalse()->end()
             ->integerNode('clean_ip_cache_duration')
             ->min(1)->defaultValue(Constants::CACHE_EXPIRATION_FOR_CLEAN_IP)
             ->end()

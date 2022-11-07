@@ -28,21 +28,25 @@ class CapiRemediation extends AbstractRemediation
     )
     {
         $this->configure($configs);
-        // Force stream mode for CAPI remediation
-        $this->configs['stream_mode'] = true;
+        // Force stream mode for CAPI remediation cache
+        $cacheStorage->setStreamMode(true);
         $this->client = $client;
         parent::__construct($this->configs, $cacheStorage, $logger);
     }
 
     public function getIpRemediation(string $ip): string
     {
+        // @TODO : retrive only the hightest decision here retrieveHighestPriorityDecisionForIp
         // Ask cache for Ip scoped decision
-        $ipDecisions = $this->cacheStorage->retrieveDecisions(Constants::SCOPE_IP, $ip);
+        $ipDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP, $ip);
         // Ask cache for Range scoped decision
-        $rangeDecisions = $this->cacheStorage->retrieveDecisions(Constants::SCOPE_RANGE, $ip);
+        $rangeDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE, $ip);
 
+        $allDecisions = array_merge($ipDecisions ? $ipDecisions[0] : [], $rangeDecisions ? $rangeDecisions[0] : []);
 
-        if (!$ipDecisions) {
+        $allDecisions = AbstractCache::sortDecisionsByRemediationPriority($allDecisions);
+
+        if (!$allDecisions) {
             // Store a bypass remediation if no cached decision found
             $decision = $this->createInternalDecision(Constants::SCOPE_IP, $ip);
             $this->storeDecisions([$decision]);
@@ -50,9 +54,7 @@ class CapiRemediation extends AbstractRemediation
             return Constants::REMEDIATION_BYPASS;
         }
 
-        //@TODO manage Range scoped decision
-
-        return $ipDecisions[0][AbstractCache::INDEX_VALUE] ?? Constants::REMEDIATION_BYPASS;
+        return $allDecisions[0][AbstractCache::INDEX_VALUE] ?? Constants::REMEDIATION_BYPASS;
     }
 
     /**
@@ -67,8 +69,8 @@ class CapiRemediation extends AbstractRemediation
 
     public function refreshDecisions(): bool
     {
-        $rawDecisions = $this->client->getStreamDecisions();
-        /*$rawDecisions = [
+        //$rawDecisions = $this->client->getStreamDecisions();
+        $rawDecisions = [
             'deleted' => [],
             'new' => [
                 ["duration" => "147h",
@@ -77,14 +79,20 @@ class CapiRemediation extends AbstractRemediation
                     "scope" => "range",
                     "type" => "ban",
                     "value" => "52.3.230.0/24"],
+                ["duration" => "147h",
+                    "origin" => "CAPI2",
+                    "scenario" => "manual",
+                    "scope" => "range",
+                    "type" => "ban",
+                    "value" => "52.3.230.1/24"],
                 ["duration" => "150h",
                     "origin" => "CAPI",
                     "scenario" => "manual",
-                    "scope" => "range",
-                    "type" => "bypass",
-                    "value" => "52.3.230.0/24"]
+                    "scope" => "ip",
+                    "type" => "ban",
+                    "value" => "52.3.230.1"]
             ]
-        ];*/
+        ];
         $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['new'] ?? []);
         $deletedDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['deleted'] ?? []);
 

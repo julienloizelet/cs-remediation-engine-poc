@@ -6,6 +6,7 @@ namespace CrowdSec\RemediationEngine\CacheStorage;
 
 use CrowdSec\RemediationEngine\CacheStorage\Memcached\TagAwareAdapter as MemcachedTagAwareAdapter;
 use IPLib\Address\Type;
+use IPLib\Factory;
 use IPLib\Range\Subnet;
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
@@ -20,17 +21,18 @@ use CrowdSec\RemediationEngine\Constants;
 
 abstract class AbstractCache
 {
-
+    /** @var string Cache symbol */
     public const CACHE_SEP = '_';
-
-    /** @var string The cache key to retrieve a cache item */
-    private const FAKE_ITEM = 'fake';
+    /** @var string The cache key to retrieve an empty cache item */
+    private const EMPTY_ITEM = 'empty';
     /** @var string The cache key prefix for a IPV4 range bucket */
     private const IPV4_BUCKET_KEY = 'RANGE_BUCKET_IPV4';
     /** @var int The size of ipv4 range cache bucket */
     private const IPV4_BUCKET_SIZE = 256;
     /** @var string The cache tag for range bucket cache item*/
     private const RANGE_BUCKET_TAG = 'RANGE_BUCKET';
+    /** @var int Maximum duration for a cache item */
+    private const FOREVER = 315360000;
 
 
     public const INDEX_VALUE = 0;
@@ -139,6 +141,11 @@ abstract class AbstractCache
         return (isset($this->configs[$name])) ? $this->configs[$name] : $default;
     }
 
+    public function setStreamMode(bool $value): void
+    {
+        $this->configs['stream_mode'] = $value;
+    }
+
     public function prune(): bool
     {
         if ($this->adapter instanceof PruneableInterface) {
@@ -168,24 +175,53 @@ abstract class AbstractCache
 
                 return $this->adapter->getItem(base64_encode($cacheKey));
             }
-            $item = $this->updateCacheItem($item, $cachedDecisions, Constants::CACHE_TAG_REM);
+            $item = $this->updateCacheItem($item, $cachedDecisions, [Constants::CACHE_TAG_REM]);
             if (!$this->adapter->saveDeferred($item)) {
-                $message = 'Unable to save this deferred item in cache: ' . $cacheKey;
-                // @TODO log message
+                $this->logger->warning('', [
+                    'type' => 'CACHE_STORE_DEFERRED_FAILED_FOR_REMOVE_DECISION',
+                    'decision' => $decision->toArray(),
+                ]);
             }
         }
 
         return $item;
     }
 
-    public function retrieveDecisions(string $scope, string $value): array
+    public function retrieveDecisionsForIp(string $scope, string $ip): array
     {
-        $cacheKey = $this->getCacheKey($scope, $value);
-        $item = $this->adapter->getItem(base64_encode($cacheKey));
-
-        // Merge with existing decisions (if any).
-        $cachedDecisions = $item->isHit() ? $item->get() : [];
-
+        $cachedDecisions = [];
+        switch ($scope) {
+            case Constants::SCOPE_IP:
+                $cacheKey = $this->getCacheKey($scope, $ip);
+                $item = $this->adapter->getItem(base64_encode($cacheKey));
+                if($item->isHit()){
+                    $cachedDecisions[] = $item->get();
+                }
+                break;
+            case Constants::SCOPE_RANGE:
+                $rangeInt = $this->getRangeIntForIp($ip);
+                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $rangeInt);
+                $bucketItem = $this->adapter->getItem(base64_encode($bucketCacheKey));
+                $cachedBuckets = $bucketItem->isHit() ? $bucketItem->get() : [];
+                foreach ($cachedBuckets as $cachedBucket){
+                    $rangeString = $cachedBucket[self::INDEX_VALUE];
+                    $address = Factory::parseAddressString($ip);
+                    $range = Factory::parseRangeString($rangeString);
+                    if($range->contains($address)){
+                        $cacheKey = $this->getCacheKey(Constants::SCOPE_RANGE, $rangeString);
+                        $item = $this->adapter->getItem(base64_encode($cacheKey));
+                        if($item->isHit()){
+                            $cachedDecisions[] = $item->get();
+                        }
+                    }
+                }
+                break;
+            default:
+                $this->logger->warning('', [
+                    'type' => 'CACHE_RETRIEVE_FOR_IP_NON_IMPLEMENTED_SCOPE',
+                    'scope' => $scope
+                ]);
+        }
         return $cachedDecisions;
     }
 
@@ -199,17 +235,17 @@ abstract class AbstractCache
     {
         switch ($decision->getScope()) {
             case Constants::SCOPE_IP:
-                $item = $this->handleDecisionItem($decision);
+                $item = $this->handleDecisionItemStorage($decision);
                 break;
             case Constants::SCOPE_RANGE:
-                $item = $this->handleRangeScoped($decision);
+                $item = $this->handleRangeScopedStorage($decision);
                 break;
             default:
                 $this->logger->warning('', [
                     'type' => 'CACHE_STORE_NON_IMPLEMENTED_SCOPE',
                     'decision' => $decision->toArray()
                 ]);
-                $item = $this->createFakeItem();
+                $item = $this->getEmptyItem();
         }
 
         if (!$this->adapter->saveDeferred($item)) {
@@ -227,7 +263,7 @@ abstract class AbstractCache
         /**
          * 3h24m59.5565s or 3h24m5957ms or 149h, etc.
          */
-        $re = '/(-?)(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)(?:.\d+)(m?)s)?/m';
+        $re = '/(-?)(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)(?:\.\d+)?(m?)s)?/m';
         preg_match($re, $duration, $matches);
         if (!\count($matches)) {
             throw new \Exception('Unable to parse the following duration:' . $duration);
@@ -266,9 +302,9 @@ abstract class AbstractCache
         return ($a < $b) ? -1 : 1;
     }
 
-    private function createFakeItem(): CacheItemInterface
+    private function getEmptyItem(): CacheItemInterface
     {
-        return $this->adapter->getItem(base64_encode(self::FAKE_ITEM));
+        return $this->adapter->getItem(base64_encode(self::EMPTY_ITEM));
     }
 
     /**
@@ -288,7 +324,7 @@ abstract class AbstractCache
              * in this case, forever is 10 years as PHP_INT_MAX will cause trouble with the Memcached Adapter
              * (int to float unwanted conversion)
              */
-            $duration = $streamMode ? 315360000 : $this->getConfig('clean_ip_cache_duration', 0);
+            $duration = $streamMode ? self::FOREVER : $this->getConfig('clean_ip_cache_duration', 0);
 
             return [
                 self::INDEX_VALUE => Constants::REMEDIATION_BYPASS,
@@ -335,7 +371,7 @@ abstract class AbstractCache
         return max(array_column($itemsToCache, self::INDEX_EXP));
     }
 
-    private function handleDecisionItem(Decision $decision): CacheItemInterface
+    private function handleDecisionItemStorage(Decision $decision): CacheItemInterface
     {
         $cacheKey = $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
@@ -356,7 +392,10 @@ abstract class AbstractCache
         return $this->updateCacheItem($item, $decisionsToCache, [Constants::CACHE_TAG_REM, $decision->getScope()]);
     }
 
-    private function handleRangeBucketItem(int $bucketInt, string $rangeValue, string $duration): CacheItemInterface
+    private function handleRangeBucketItemStorage(
+        int $bucketInt,
+        string $rangeValue,
+        string $duration): CacheItemInterface
     {
         $cacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt);
         $item = $this->adapter->getItem(base64_encode($cacheKey));
@@ -387,7 +426,7 @@ abstract class AbstractCache
         return $item;
     }
 
-    private function handleRangeScoped(Decision $decision): CacheItemInterface
+    private function handleRangeScopedStorage(Decision $decision): CacheItemInterface
     {
         // @TODO exclude 32 bits system
         $rangeString = $decision->getValue();
@@ -398,7 +437,7 @@ abstract class AbstractCache
                 'type' => 'INVALID_RANGE_TO_ADD_FROM_DECISION',
                 'decision' => $decision->toArray(),
             ]);
-            return $this->createFakeItem();
+            return $this->getEmptyItem();
         }
         $addressType = $range->getAddressType();
         if (Type::T_IPv6 === $addressType) {
@@ -406,18 +445,24 @@ abstract class AbstractCache
                 'type' => 'IPV6_RANGE_STORAGE_NOT_IMPLEMENTED',
                 'decision' => $decision->toArray(),
             ]);
-            return $this->createFakeItem();
+            return $this->getEmptyItem();
         }
 
         $startAddress = $range->getStartAddress();
         $endAddress = $range->getEndAddress();
 
-        $startInt = intdiv(ip2long($startAddress->toString()), self::IPV4_BUCKET_SIZE);
-        $endInt = intdiv(ip2long($endAddress->toString()), self::IPV4_BUCKET_SIZE);
+        $startInt = $this->getRangeIntForIp($startAddress->toString());
+        $endInt = $this->getRangeIntForIp($endAddress->toString());
         for ($i = $startInt; $i <= $endInt; $i++){
-            $this->handleRangeBucketItem($i, $rangeString, $duration);
+            $this->handleRangeBucketItemStorage($i, $rangeString, $duration);
         }
-        return $this->handleDecisionItem($decision);
+        return $this->handleDecisionItemStorage($decision);
+    }
+
+
+    private function getRangeIntForIp(string $ip): int
+    {
+        return intdiv(ip2long($ip), self::IPV4_BUCKET_SIZE);
     }
 
     /**
@@ -439,7 +484,7 @@ abstract class AbstractCache
     /**
      * Sort the decision array of a cache item, by remediation priorities.
      */
-    private function sortDecisionsByRemediationPriority(array $decisions): array
+    public static function sortDecisionsByRemediationPriority(array $decisions): array
     {
         // Sort by priorities.
         /** @var callable $compareFunction */
