@@ -14,11 +14,9 @@ use IPLib\Range\RangeInterface;
 use IPLib\Range\Subnet;
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
-use Psr\Cache\CacheItemInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
-use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\PruneableInterface;
 
@@ -49,7 +47,7 @@ abstract class AbstractCache
     private const IPV4_BUCKET_SIZE = 256;
     /** @var string The cache tag for range bucket cache item */
     private const RANGE_BUCKET_TAG = 'RANGE_BUCKET';
-    /** @var TagAwareAdapter|MemcachedTagAwareAdapter|RedisTagAwareAdapter */
+    /** @var TagAwareAdapterInterface */
     protected $adapter;
     /**
      * @var array
@@ -166,7 +164,7 @@ abstract class AbstractCache
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    public function removeDecision(Decision $decision): CacheItemInterface
+    public function removeDecision(Decision $decision): ItemInterface
     {
         switch ($decision->getScope()) {
             case Constants::SCOPE_IP:
@@ -211,7 +209,7 @@ abstract class AbstractCache
                     $rangeString = $cachedBucket[self::INDEX_VALUE];
                     $address = Factory::parseAddressString($ip);
                     $range = Factory::parseRangeString($rangeString);
-                    if ($range->contains($address)) {
+                    if ($address && $range && $range->contains($address)) {
                         $cacheKey = $this->getCacheKey(Constants::SCOPE_RANGE, $rangeString);
                         $item = $this->adapter->getItem(base64_encode($cacheKey));
                         if ($item->isHit()) {
@@ -240,7 +238,7 @@ abstract class AbstractCache
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    public function storeDecision(Decision $decision): CacheItemInterface
+    public function storeDecision(Decision $decision): ItemInterface
     {
         switch ($decision->getScope()) {
             case Constants::SCOPE_IP:
@@ -365,7 +363,7 @@ abstract class AbstractCache
     /**
      * @throws InvalidArgumentException
      */
-    private function getEmptyItem(): CacheItemInterface
+    private function getEmptyItem(): ItemInterface
     {
         return $this->adapter->getItem(base64_encode(self::EMPTY_ITEM));
     }
@@ -451,7 +449,7 @@ abstract class AbstractCache
      * @throws InvalidArgumentException
      * @throws \Exception
      */
-    private function remove(Decision $decision, ?int $bucketInt = null): CacheItemInterface
+    private function remove(Decision $decision, ?int $bucketInt = null): ItemInterface
     {
         $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
@@ -486,7 +484,7 @@ abstract class AbstractCache
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    private function removeRangeScoped(Decision $decision): CacheItemInterface
+    private function removeRangeScoped(Decision $decision): ItemInterface
     {
         $range = $this->manageRange($decision);
         if (!$range) {
@@ -527,7 +525,7 @@ abstract class AbstractCache
      * @throws InvalidArgumentException
      * @throws \Exception
      */
-    private function store(Decision $decision, ?int $bucketInt = null): CacheItemInterface
+    private function store(Decision $decision, ?int $bucketInt = null): ItemInterface
     {
         $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
@@ -555,7 +553,7 @@ abstract class AbstractCache
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    private function storeRangeScoped(Decision $decision): CacheItemInterface
+    private function storeRangeScoped(Decision $decision): ItemInterface
     {
         $range = $this->manageRange($decision);
         if (!$range) {
@@ -586,7 +584,7 @@ abstract class AbstractCache
     /**
      * @throws \Exception
      */
-    private function updateCacheItem(CacheItemInterface $item, array $valuesToCache, array $tags): CacheItemInterface
+    private function updateCacheItem(ItemInterface $item, array $valuesToCache, array $tags): ItemInterface
     {
         $maxExpiration = $this->getMaxExpiration($valuesToCache);
         $item->set($valuesToCache);

@@ -13,5 +13,28 @@
             <directory name="../vendor" />
         </ignoreFiles>
     </projectFiles>
-    
+    <issueHandlers>
+        <InvalidThrow>
+            <errorLevel type="suppress">
+                <referencedClass name="Psr\Cache\InvalidArgumentException"/>
+                <referencedClass name="Psr\Cache\CacheException"/>
+            </errorLevel>
+        </InvalidThrow>
+        <UndefinedDocblockClass>
+            <errorLevel type="suppress">
+                <referencedClass name="Predis\ClientInterface"/>
+            </errorLevel>
+        </UndefinedDocblockClass>
+        <UndefinedInterfaceMethod>
+            <errorLevel type="info">
+                <referencedMethod name="Symfony\Component\Cache\Adapter\TagAwareAdapterInterface::delete"/>
+            </errorLevel>
+        </UndefinedInterfaceMethod>
+        <PossiblyUndefinedMethod>
+            <errorLevel type="suppress">
+                <referencedMethod name="Symfony\Component\Config\Definition\Builder\NodeDefinition::arrayNode"/>
+                <referencedMethod name="Symfony\Component\Config\Definition\Builder\NodeParentInterface::end"/>
+            </errorLevel>
+        </PossiblyUndefinedMethod>
+    </issueHandlers>
 </psalm>
