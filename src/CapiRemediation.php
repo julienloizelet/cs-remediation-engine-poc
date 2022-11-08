@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine;
 
+use ArithmeticError;
 use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
 use CrowdSec\RemediationEngine\Configuration\Capi as CapiRemediationConfig;
 use CrowdSec\CapiClient\Watcher;
+use DivisionByZeroError;
+use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Config\Definition\Processor;
 
@@ -20,6 +23,12 @@ class CapiRemediation extends AbstractRemediation
     /** @var array<string> The list of each known CAPI remediation, sorted by priority */
     public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
 
+    /**
+     * @param array $configs
+     * @param Watcher $client
+     * @param AbstractCache $cacheStorage
+     * @param LoggerInterface|null $logger
+     */
     public function __construct(
         array           $configs,
         Watcher         $client,
@@ -34,6 +43,14 @@ class CapiRemediation extends AbstractRemediation
         parent::__construct($this->configs, $cacheStorage, $logger);
     }
 
+    /**
+     * @param string $ip
+     * @return string
+     * @throws CacheStorage\CacheException
+     * @throws ArithmeticError
+     * @throws DivisionByZeroError
+     * @throws InvalidArgumentException
+     */
     public function getIpRemediation(string $ip): string
     {
         // Ask cache for Ip scoped decision
@@ -41,7 +58,10 @@ class CapiRemediation extends AbstractRemediation
         // Ask cache for Range scoped decision
         $rangeDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE, $ip);
 
-        $allDecisions = array_merge($ipDecisions ? $ipDecisions[0] : [], $rangeDecisions ? $rangeDecisions[0] : []);
+        $allDecisions = array_merge(
+            $ipDecisions ? $ipDecisions[0] : [],
+            $rangeDecisions ? $rangeDecisions[0] : []
+        );
 
         if (!$allDecisions) {
             // Store a bypass remediation if no cached decision found
@@ -58,6 +78,9 @@ class CapiRemediation extends AbstractRemediation
 
     /**
      * Process and validate input configurations.
+     *
+     * @param array $configs
+     * @return void
      */
     private function configure(array $configs): void
     {
@@ -66,6 +89,9 @@ class CapiRemediation extends AbstractRemediation
         $this->configs = $processor->processConfiguration($configuration, [$configs]);
     }
 
+    /**
+     * @return bool
+     */
     public function refreshDecisions(): bool
     {
         $rawDecisions = $this->client->getStreamDecisions();

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine\CacheStorage;
 
+use ArithmeticError;
 use CrowdSec\RemediationEngine\CacheStorage\Memcached\TagAwareAdapter as MemcachedTagAwareAdapter;
+use DivisionByZeroError;
+use Exception;
 use IPLib\Address\Type;
 use IPLib\Factory;
 use IPLib\Range\RangeInterface;
@@ -12,6 +15,7 @@ use IPLib\Range\Subnet;
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use Psr\Cache\CacheItemInterface;
+use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
@@ -163,6 +167,14 @@ abstract class AbstractCache
         throw new CacheException('Cache Adapter ' . \get_class($this->adapter) . ' is not pruneable.');
     }
 
+    /**
+     * @param Decision $decision
+     * @return CacheItemInterface
+     * @throws ArithmeticError
+     * @throws CacheException
+     * @throws DivisionByZeroError
+     * @throws InvalidArgumentException
+     */
     public function removeDecision(Decision $decision): CacheItemInterface
     {
         switch ($decision->getScope()) {
@@ -184,6 +196,15 @@ abstract class AbstractCache
         return $item;
     }
 
+    /**
+     * @param string $scope
+     * @param string $ip
+     * @return array
+     * @throws ArithmeticError
+     * @throws CacheException
+     * @throws DivisionByZeroError
+     * @throws InvalidArgumentException
+     */
     public function retrieveDecisionsForIp(string $scope, string $ip): array
     {
         $cachedDecisions = [];
@@ -196,8 +217,8 @@ abstract class AbstractCache
                 }
                 break;
             case Constants::SCOPE_RANGE:
-                $rangeInt = $this->getRangeIntForIp($ip);
-                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$rangeInt);
+                $bucketInt = $this->getRangeIntForIp($ip);
+                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt);
                 $bucketItem = $this->adapter->getItem(base64_encode($bucketCacheKey));
                 $cachedBuckets = $bucketItem->isHit() ? $bucketItem->get() : [];
                 foreach ($cachedBuckets as $cachedBucket) {
@@ -218,6 +239,7 @@ abstract class AbstractCache
                     'type' => 'CACHE_RETRIEVE_FOR_IP_NON_IMPLEMENTED_SCOPE',
                     'scope' => $scope
                 ]);
+                break;
         }
 
         return $cachedDecisions;
@@ -231,8 +253,10 @@ abstract class AbstractCache
     /**
      * @param Decision $decision
      * @return CacheItemInterface
-     * @throws \Psr\Cache\CacheException
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws ArithmeticError
+     * @throws CacheException
+     * @throws DivisionByZeroError
+     * @throws InvalidArgumentException
      */
     public function storeDecision(Decision $decision): CacheItemInterface
     {
@@ -254,6 +278,11 @@ abstract class AbstractCache
         return $item;
     }
 
+    /**
+     * @param string $duration
+     * @return int
+     * @throws CacheException
+     */
     protected function parseDurationToSeconds(string $duration): int
     {
         /**
@@ -311,7 +340,7 @@ abstract class AbstractCache
      *
      * @param Decision $decision
      * @return array
-     * @throws \Exception
+     * @throws Exception
      *
      */
     private function format(Decision $decision): array
@@ -345,6 +374,7 @@ abstract class AbstractCache
      *
      * @param Decision $decision
      * @return array
+     * @throws CacheException
      */
     private function formatIpV4Range(Decision $decision): array
     {
@@ -357,26 +387,51 @@ abstract class AbstractCache
         ];
     }
 
+    /**
+     * @return CacheItemInterface
+     * @throws InvalidArgumentException
+     */
     private function getEmptyItem(): CacheItemInterface
     {
         return $this->adapter->getItem(base64_encode(self::EMPTY_ITEM));
     }
 
+    /**
+     * @param array $itemsToCache
+     * @return int
+     */
     private function getMaxExpiration(array $itemsToCache): int
     {
         return max(array_column($itemsToCache, self::INDEX_EXP));
     }
 
+    /**
+     * @param string $ip
+     * @return int
+     * @throws ArithmeticError
+     * @throws DivisionByZeroError
+     */
     private function getRangeIntForIp(string $ip): int
     {
         return intdiv(ip2long($ip), self::IPV4_BUCKET_SIZE);
     }
 
-    private function getTags(Decision $decision, ?int $bucketInt = null)
+    /**
+     * @param Decision $decision
+     * @param int|null $bucketInt
+     * @return array|string[]
+     */
+    private function getTags(Decision $decision, ?int $bucketInt = null): array
     {
         return $bucketInt ? [self::RANGE_BUCKET_TAG] : [Constants::CACHE_TAG_REM, $decision->getScope()];
     }
 
+    /**
+     * @param Decision $decision
+     * @param bool $streamMode
+     * @return int
+     * @throws CacheException
+     */
     private function handleBadIpDuration(Decision $decision, bool $streamMode): int
     {
         $duration = $this->parseDurationToSeconds($decision->getDuration());
@@ -391,6 +446,10 @@ abstract class AbstractCache
         return $duration;
     }
 
+    /**
+     * @param Decision $decision
+     * @return RangeInterface|null
+     */
     private function manageRange(Decision $decision): ?RangeInterface
     {
         $rangeString = $decision->getValue();
@@ -421,7 +480,8 @@ abstract class AbstractCache
      * @param int|null $bucketInt
      * @return CacheItemInterface
      * @throws CacheException
-     * @throws \Psr\Cache\InvalidArgumentException
+     * @throws InvalidArgumentException
+     * @throws Exception
      */
     private function remove(Decision $decision, ?int $bucketInt = null): CacheItemInterface
     {
@@ -454,6 +514,14 @@ abstract class AbstractCache
         return $item;
     }
 
+    /**
+     * @param Decision $decision
+     * @return CacheItemInterface
+     * @throws ArithmeticError
+     * @throws CacheException
+     * @throws DivisionByZeroError
+     * @throws InvalidArgumentException
+     */
     private function removeRangeScoped(Decision $decision): CacheItemInterface
     {
         $range = $this->manageRange($decision);
@@ -489,6 +557,14 @@ abstract class AbstractCache
         }
     }
 
+    /**
+     * @param Decision $decision
+     * @param int|null $bucketInt
+     * @return CacheItemInterface
+     * @throws CacheException
+     * @throws InvalidArgumentException
+     * @throws Exception
+     */
     private function store(Decision $decision, ?int $bucketInt = null): CacheItemInterface
     {
         $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
@@ -513,6 +589,14 @@ abstract class AbstractCache
         return $item;
     }
 
+    /**
+     * @param Decision $decision
+     * @return CacheItemInterface
+     * @throws ArithmeticError
+     * @throws CacheException
+     * @throws DivisionByZeroError
+     * @throws InvalidArgumentException
+     */
     private function storeRangeScoped(Decision $decision): CacheItemInterface
     {
         $range = $this->manageRange($decision);
@@ -541,6 +625,13 @@ abstract class AbstractCache
         }
     }
 
+    /**
+     * @param CacheItemInterface $item
+     * @param array $valuesToCache
+     * @param array $tags
+     * @return CacheItemInterface
+     * @throws Exception
+     */
     private function updateCacheItem(CacheItemInterface $item, array $valuesToCache, array $tags): CacheItemInterface
     {
         $maxExpiration = $this->getMaxExpiration($valuesToCache);

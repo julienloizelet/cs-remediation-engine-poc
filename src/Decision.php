@@ -41,11 +41,13 @@ class Decision
         $this->priority = array_search($this->type, $orderedRemediation);
     }
 
-    private function handleIdentifier(int $id = 0, Decision $decision): string
+    private function handleIdentifier(int $id, Decision $decision): string
     {
         return $id > 0 ? (string)$id :
-            $decision->origin . self::ID_SEP . $decision->type . self::ID_SEP . $decision->scope .
-            self::ID_SEP . $decision->value;
+            $decision->origin . self::ID_SEP .
+            $decision->type . self::ID_SEP .
+            $decision->scope . self::ID_SEP .
+            $decision->value;
     }
 
     public function getDuration(): string
@@ -81,7 +83,7 @@ class Decision
     /**
      * @return array
      */
-    public function toArray()
+    public function toArray(): array
     {
         return [
             'identifier' => $this->getIdentifier(),
@@ -92,5 +94,4 @@ class Decision
             'duration' => $this->getDuration()
         ];
     }
-
 }
