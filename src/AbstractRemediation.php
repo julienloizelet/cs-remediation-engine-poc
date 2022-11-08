@@ -144,4 +144,32 @@ abstract class AbstractRemediation
 
         throw new RemediationException('Raw decision is not as expected: ' . json_encode($rawDecision));
     }
+
+
+    /**
+     * Sort the decision array of a cache item, by remediation priorities.
+     */
+    protected function sortDecisionsByRemediationPriority(array $decisions): array
+    {
+        // Sort by priorities.
+        /** @var callable $compareFunction */
+        $compareFunction = self::class . '::comparePriorities';
+        usort($decisions, $compareFunction);
+
+        return $decisions;
+    }
+
+    /**
+     * Compare two priorities.
+     */
+    private static function comparePriorities(array $a, array $b): int
+    {
+        $a = $a[AbstractCache::INDEX_PRIO];
+        $b = $b[AbstractCache::INDEX_PRIO];
+        if ($a == $b) {
+            return 0;
+        }
+
+        return ($a < $b) ? -1 : 1;
+    }
 }

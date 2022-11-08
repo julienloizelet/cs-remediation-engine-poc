@@ -36,15 +36,12 @@ class CapiRemediation extends AbstractRemediation
 
     public function getIpRemediation(string $ip): string
     {
-        // @TODO : retrive only the hightest decision here retrieveHighestPriorityDecisionForIp
         // Ask cache for Ip scoped decision
         $ipDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP, $ip);
         // Ask cache for Range scoped decision
         $rangeDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE, $ip);
 
         $allDecisions = array_merge($ipDecisions ? $ipDecisions[0] : [], $rangeDecisions ? $rangeDecisions[0] : []);
-
-        $allDecisions = AbstractCache::sortDecisionsByRemediationPriority($allDecisions);
 
         if (!$allDecisions) {
             // Store a bypass remediation if no cached decision found
@@ -54,6 +51,8 @@ class CapiRemediation extends AbstractRemediation
             return Constants::REMEDIATION_BYPASS;
         }
 
+        $allDecisions = $this->sortDecisionsByRemediationPriority($allDecisions);
+        // Return only a remediation with hightest priority
         return $allDecisions[0][AbstractCache::INDEX_VALUE] ?? Constants::REMEDIATION_BYPASS;
     }
 
@@ -69,30 +68,25 @@ class CapiRemediation extends AbstractRemediation
 
     public function refreshDecisions(): bool
     {
-        //$rawDecisions = $this->client->getStreamDecisions();
-        $rawDecisions = [
-            'deleted' => [],
-            'new' => [
-                ["duration" => "147h",
-                    "origin" => "CAPI",
-                    "scenario" => "manual",
-                    "scope" => "range",
-                    "type" => "ban",
-                    "value" => "52.3.230.0/24"],
+        $rawDecisions = $this->client->getStreamDecisions();
+        /*$rawDecisions = [
+            'deleted' => [
                 ["duration" => "147h",
                     "origin" => "CAPI2",
                     "scenario" => "manual",
                     "scope" => "range",
                     "type" => "ban",
                     "value" => "52.3.230.1/24"],
-                ["duration" => "150h",
+                ["duration" => "147h",
                     "origin" => "CAPI",
                     "scenario" => "manual",
-                    "scope" => "ip",
+                    "scope" => "range",
                     "type" => "ban",
-                    "value" => "52.3.230.1"]
+                    "value" => "52.3.230.0/24"]
+            ],
+            'new' => [
             ]
-        ];
+        ];*/
         $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['new'] ?? []);
         $deletedDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['deleted'] ?? []);
 

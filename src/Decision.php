@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine;
 
-
 class Decision
 {
     private const ID_SEP = '-';
@@ -19,13 +18,13 @@ class Decision
 
     public function __construct(
         AbstractRemediation $remediation,
-        string $scope,
-        string $value,
-        string $type,
-        string $origin,
-        string $duration,
-        string $scenario,
-        int    $id = 0)
+        string              $scope,
+        string              $value,
+        string              $type,
+        string              $origin,
+        string              $duration,
+        string              $scenario,
+        int                 $id = 0)
     {
         $this->scope = $scope;
         $this->value = $value;
@@ -33,13 +32,20 @@ class Decision
         $this->duration = $duration;
         $this->scenario = $scenario;
 
-
         $orderedRemediation = $remediation->getConfig('ordered_remediations');
         $fallbackRemediation = $remediation->getConfig('fallback_remediation');
         $this->type = in_array($type, $orderedRemediation) ? $type : $fallbackRemediation;
-        $this->identifier = $id > 0 ? (string)$id : $this->type . self::ID_SEP . $this->origin;
+        $this->identifier = $this->handleIdentifier($id, $this);
+
         // Add numerical priority allowing easy sorting.
         $this->priority = array_search($this->type, $orderedRemediation);
+    }
+
+    private function handleIdentifier(int $id = 0, Decision $decision): string
+    {
+        return $id > 0 ? (string)$id :
+            $decision->origin . self::ID_SEP . $decision->type . self::ID_SEP . $decision->scope .
+            self::ID_SEP . $decision->value;
     }
 
     public function getDuration(): string
@@ -75,8 +81,8 @@ class Decision
     /**
      * @return array
      */
-    public function toArray(){
-
+    public function toArray()
+    {
         return [
             'identifier' => $this->getIdentifier(),
             'scope' => $this->getScope(),
@@ -85,7 +91,6 @@ class Decision
             'priority' => $this->getPriority(),
             'duration' => $this->getDuration()
         ];
-
     }
 
 }
