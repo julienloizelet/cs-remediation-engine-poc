@@ -12,10 +12,7 @@ use Symfony\Component\Config\Definition\Processor;
 
 class PhpFiles extends AbstractCache
 {
-
     /**
-     * @param array $configs
-     * @param LoggerInterface|null $logger
      * @throws CacheException
      */
     public function __construct(array $configs, LoggerInterface $logger = null)

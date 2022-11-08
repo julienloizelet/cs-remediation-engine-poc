@@ -26,11 +26,6 @@ abstract class AbstractRemediation
      */
     protected $logger;
 
-    /**
-     * @param array $configs
-     * @param AbstractCache $cacheStorage
-     * @param LoggerInterface|null $logger
-     */
     public function __construct(array $configs, AbstractCache $cacheStorage, LoggerInterface $logger = null)
     {
         $this->configs = $configs;
@@ -45,7 +40,6 @@ abstract class AbstractRemediation
     /**
      * Clear cache.
      *
-     * @return bool
      * @throws CacheStorage\CacheException
      */
     public function clearCache(): bool
@@ -56,8 +50,6 @@ abstract class AbstractRemediation
     /**
      * Retrieve a flat config value by name.
      *
-     * @param string $name
-     * @param $default
      * @return mixed|null
      */
     public function getConfig(string $name, $default = null)
@@ -66,17 +58,13 @@ abstract class AbstractRemediation
     }
 
     /**
-     * Retrieve remediation for some IP
-     *
-     * @param string $ip
-     * @return string
+     * Retrieve remediation for some IP.
      */
     abstract public function getIpRemediation(string $ip): string;
 
     /**
      * Prune cache.
      *
-     * @return bool
      * @throws CacheStorage\CacheException
      */
     public function pruneCache(): bool
@@ -85,15 +73,11 @@ abstract class AbstractRemediation
     }
 
     /**
-     * Pull fresh decisions and update the cache
-     *
-     * @return bool
+     * Pull fresh decisions and update the cache.
      */
     abstract public function refreshDecisions(): bool;
 
     /**
-     * @param array $decisions
-     * @return bool
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -107,8 +91,6 @@ abstract class AbstractRemediation
     }
 
     /**
-     * @param array $decisions
-     * @return bool
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -123,8 +105,6 @@ abstract class AbstractRemediation
     }
 
     /**
-     * @param array $rawDecisions
-     * @return array
      * @throws RemediationException
      */
     protected function convertRawDecisionsToDecisions(array $rawDecisions): array
@@ -137,12 +117,6 @@ abstract class AbstractRemediation
         return $decisions;
     }
 
-    /**
-     * @param string $scope
-     * @param string $value
-     * @param string $type
-     * @return Decision
-     */
     protected function createInternalDecision(
         string $scope,
         string $value,
@@ -166,6 +140,7 @@ abstract class AbstractRemediation
 
     /**
      * Compare two priorities.
+     *
      * @noinspection PhpUnusedPrivateMethodInspection
      */
     private static function comparePriorities(array $a, array $b): int
@@ -180,14 +155,13 @@ abstract class AbstractRemediation
     }
 
     /**
-     * @param array $rawDecision
-     * @return Decision
      * @throws RemediationException
      */
     private function convertRawDecision(array $rawDecision): Decision
     {
         $this->validateRawDecision($rawDecision);
-        return new Decision (
+
+        return new Decision(
             $this,
             ucfirst($rawDecision['scope']),
             $rawDecision['value'],
@@ -200,8 +174,6 @@ abstract class AbstractRemediation
     }
 
     /**
-     * @param array $rawDecision
-     * @return void
      * @throws RemediationException
      */
     private function validateRawDecision(array $rawDecision): void

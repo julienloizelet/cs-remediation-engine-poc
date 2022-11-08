@@ -21,9 +21,6 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  */
 class Memcached extends AbstractCache implements ConfigurationInterface
 {
-    /**
-     * @return TreeBuilder
-     */
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('config');
@@ -34,7 +31,6 @@ class Memcached extends AbstractCache implements ConfigurationInterface
         ->end()
         ;
         $this->addCommonNodes($rootNode);
-
 
         return $treeBuilder;
     }

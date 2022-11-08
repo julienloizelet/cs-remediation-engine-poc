@@ -12,17 +12,12 @@ use Symfony\Component\Config\Definition\Processor;
 
 class Redis extends AbstractCache
 {
-
-    /**
-     * @param array $configs
-     * @param LoggerInterface|null $logger
-     */
     public function __construct(array $configs, LoggerInterface $logger = null)
     {
         $this->configure($configs);
 
         try {
-            $adapter = new RedisTagAwareAdapter((RedisAdapter::createConnection($this->configs['redis_dsn'])));
+            $adapter = new RedisTagAwareAdapter(RedisAdapter::createConnection($this->configs['redis_dsn']));
         } catch (\Exception $e) {
             throw new CacheException('Error when creating Redis cache adapter:' . $e->getMessage());
         }

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine;
 
+use CrowdSec\CapiClient\Watcher;
 use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
 use CrowdSec\RemediationEngine\CacheStorage\CacheException;
 use CrowdSec\RemediationEngine\Configuration\Capi as CapiRemediationConfig;
-use CrowdSec\CapiClient\Watcher;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Config\Definition\Processor;
@@ -22,19 +22,12 @@ class CapiRemediation extends AbstractRemediation
     /** @var array<string> The list of each known CAPI remediation, sorted by priority */
     public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
 
-    /**
-     * @param array $configs
-     * @param Watcher $client
-     * @param AbstractCache $cacheStorage
-     * @param LoggerInterface|null $logger
-     */
     public function __construct(
-        array           $configs,
-        Watcher         $client,
-        AbstractCache   $cacheStorage,
+        array $configs,
+        Watcher $client,
+        AbstractCache $cacheStorage,
         LoggerInterface $logger = null
-    )
-    {
+    ) {
         $this->configure($configs);
         // Force stream mode for CAPI remediation cache
         $cacheStorage->setStreamMode(true);
@@ -43,8 +36,6 @@ class CapiRemediation extends AbstractRemediation
     }
 
     /**
-     * @param string $ip
-     * @return string
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -75,9 +66,6 @@ class CapiRemediation extends AbstractRemediation
 
     /**
      * Process and validate input configurations.
-     *
-     * @param array $configs
-     * @return void
      */
     private function configure(array $configs): void
     {
@@ -87,7 +75,6 @@ class CapiRemediation extends AbstractRemediation
     }
 
     /**
-     * @return bool
      * @throws CacheException
      * @throws InvalidArgumentException
      * @throws RemediationException
@@ -112,5 +99,4 @@ class CapiRemediation extends AbstractRemediation
 
         return $this->storeDecisions($newDecisions) && $this->removeDecisions($deletedDecisions);
     }
-
 }

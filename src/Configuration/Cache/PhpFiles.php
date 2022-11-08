@@ -21,9 +21,6 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  */
 class PhpFiles extends AbstractCache implements ConfigurationInterface
 {
-    /**
-     * @return TreeBuilder
-     */
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('config');

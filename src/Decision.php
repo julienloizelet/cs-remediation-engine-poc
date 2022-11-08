@@ -18,13 +18,13 @@ class Decision
 
     public function __construct(
         AbstractRemediation $remediation,
-        string              $scope,
-        string              $value,
-        string              $type,
-        string              $origin,
-        string              $duration,
-        string              $scenario,
-        int                 $id = 0)
+        string $scope,
+        string $value,
+        string $type,
+        string $origin,
+        string $duration,
+        string $scenario,
+        int $id = 0)
     {
         $this->scope = $scope;
         $this->value = $value;
@@ -43,7 +43,7 @@ class Decision
 
     private function handleIdentifier(int $id, Decision $decision): string
     {
-        return $id > 0 ? (string)$id :
+        return $id > 0 ? (string) $id :
             $decision->origin . self::ID_SEP .
             $decision->type . self::ID_SEP .
             $decision->scope . self::ID_SEP .
@@ -80,9 +80,6 @@ class Decision
         return $this->value;
     }
 
-    /**
-     * @return array
-     */
     public function toArray(): array
     {
         return [
@@ -91,7 +88,7 @@ class Decision
             'value' => $this->getValue(),
             'type' => $this->getType(),
             'priority' => $this->getPriority(),
-            'duration' => $this->getDuration()
+            'duration' => $this->getDuration(),
         ];
     }
 }

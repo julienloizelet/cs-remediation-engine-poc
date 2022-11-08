@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine\CacheStorage;
 
-use ArithmeticError;
 use CrowdSec\RemediationEngine\CacheStorage\Memcached\TagAwareAdapter as MemcachedTagAwareAdapter;
-use DivisionByZeroError;
+use CrowdSec\RemediationEngine\Constants;
+use CrowdSec\RemediationEngine\Decision;
 use Exception;
 use IPLib\Address\Type;
 use IPLib\Factory;
@@ -21,8 +21,6 @@ use Symfony\Component\Cache\Adapter\RedisTagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapter;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\PruneableInterface;
-use CrowdSec\RemediationEngine\Decision;
-use CrowdSec\RemediationEngine\Constants;
 
 abstract class AbstractCache
 {
@@ -59,7 +57,6 @@ abstract class AbstractCache
     protected $configs;
     /**
      * @var LoggerInterface
-     *
      */
     protected $logger;
     /**
@@ -113,9 +110,6 @@ abstract class AbstractCache
     /**
      * Cache key convention.
      *
-     * @param string $scope
-     * @param string $value
-     * @return string
      * @throws CacheException
      */
     public function getCacheKey(string $scope, string $value): string
@@ -132,7 +126,8 @@ abstract class AbstractCache
             }
 
             /**
-             * Replace unauthorized symbols
+             * Replace unauthorized symbols.
+             *
              * @see https://symfony.com/doc/current/components/cache/cache_items.html#cache-item-keys-and-values
              */
             $this->cacheKeys[$scope][$value] = preg_replace('/[^A-Za-z0-9_.]/', self::CACHE_SEP, $result);
@@ -168,8 +163,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param Decision $decision
-     * @return CacheItemInterface
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -185,7 +178,7 @@ abstract class AbstractCache
             default:
                 $this->logger->warning('', [
                     'type' => 'CACHE_REMOVE_NON_IMPLEMENTED_SCOPE',
-                    'decision' => $decision->toArray()
+                    'decision' => $decision->toArray(),
                 ]);
                 $item = $this->getEmptyItem();
                 break;
@@ -195,9 +188,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param string $scope
-     * @param string $ip
-     * @return array
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -214,7 +204,7 @@ abstract class AbstractCache
                 break;
             case Constants::SCOPE_RANGE:
                 $bucketInt = $this->getRangeIntForIp($ip);
-                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt);
+                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt);
                 $bucketItem = $this->adapter->getItem(base64_encode($bucketCacheKey));
                 $cachedBuckets = $bucketItem->isHit() ? $bucketItem->get() : [];
                 foreach ($cachedBuckets as $cachedBucket) {
@@ -233,7 +223,7 @@ abstract class AbstractCache
             default:
                 $this->logger->warning('', [
                     'type' => 'CACHE_RETRIEVE_FOR_IP_NON_IMPLEMENTED_SCOPE',
-                    'scope' => $scope
+                    'scope' => $scope,
                 ]);
                 break;
         }
@@ -247,8 +237,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param Decision $decision
-     * @return CacheItemInterface
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -264,7 +252,7 @@ abstract class AbstractCache
             default:
                 $this->logger->warning('', [
                     'type' => 'CACHE_STORE_NON_IMPLEMENTED_SCOPE',
-                    'decision' => $decision->toArray()
+                    'decision' => $decision->toArray(),
                 ]);
                 $item = $this->getEmptyItem();
         }
@@ -273,8 +261,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param string $duration
-     * @return int
      * @throws CacheException
      */
     protected function parseDurationToSeconds(string $duration): int
@@ -289,22 +275,22 @@ abstract class AbstractCache
         }
         $seconds = 0;
         if (isset($matches[2])) {
-            $seconds += ((int)$matches[2]) * 3600; // hours
+            $seconds += ((int) $matches[2]) * 3600; // hours
         }
         if (isset($matches[3])) {
-            $seconds += ((int)$matches[3]) * 60; // minutes
+            $seconds += ((int) $matches[3]) * 60; // minutes
         }
         if (isset($matches[4])) {
-            $seconds += ((int)$matches[4]); // seconds
+            $seconds += ((int) $matches[4]); // seconds
         }
-        if (isset($matches[5]) && 'm' === ($matches[5])) { // units in milliseconds
+        if (isset($matches[5]) && 'm' === $matches[5]) { // units in milliseconds
             $seconds *= 0.001;
         }
-        if ('-' === ($matches[1])) { // negative
+        if ('-' === $matches[1]) { // negative
             $seconds *= -1;
         }
 
-        return (int)round($seconds);
+        return (int) round($seconds);
     }
 
     private function cleanCachedValues(array $cachedValues, string $identifier, bool $flagIsCached = false): array
@@ -330,12 +316,9 @@ abstract class AbstractCache
     }
 
     /**
-     * Format decision to use a minimal amount of data (less cache data consumption)
+     * Format decision to use a minimal amount of data (less cache data consumption).
      *
-     * @param Decision $decision
-     * @return array
-     * @throws Exception
-     *
+     * @throws \Exception
      */
     private function format(Decision $decision): array
     {
@@ -351,7 +334,7 @@ abstract class AbstractCache
                 self::INDEX_VALUE => Constants::REMEDIATION_BYPASS,
                 self::INDEX_EXP => time() + $duration,
                 self::INDEX_ID => $decision->getIdentifier(),
-                self::INDEX_PRIO => $decision->getPriority()
+                self::INDEX_PRIO => $decision->getPriority(),
             ];
         }
 
@@ -359,15 +342,13 @@ abstract class AbstractCache
             self::INDEX_VALUE => $decision->getType(),
             self::INDEX_EXP => time() + $this->handleBadIpDuration($decision, $streamMode),
             self::INDEX_ID => $decision->getIdentifier(),
-            self::INDEX_PRIO => $decision->getPriority()
+            self::INDEX_PRIO => $decision->getPriority(),
         ];
     }
 
     /**
-     * Format range to use a minimal amount of data (less cache data consumption)
+     * Format range to use a minimal amount of data (less cache data consumption).
      *
-     * @param Decision $decision
-     * @return array
      * @throws CacheException
      */
     private function formatIpV4Range(Decision $decision): array
@@ -377,12 +358,11 @@ abstract class AbstractCache
         return [
             self::INDEX_VALUE => $decision->getValue(),
             self::INDEX_EXP => time() + $this->handleBadIpDuration($decision, $streamMode),
-            self::INDEX_ID => $decision->getIdentifier()
+            self::INDEX_ID => $decision->getIdentifier(),
         ];
     }
 
     /**
-     * @return CacheItemInterface
      * @throws InvalidArgumentException
      */
     private function getEmptyItem(): CacheItemInterface
@@ -390,18 +370,12 @@ abstract class AbstractCache
         return $this->adapter->getItem(base64_encode(self::EMPTY_ITEM));
     }
 
-    /**
-     * @param array $itemsToCache
-     * @return int
-     */
     private function getMaxExpiration(array $itemsToCache): int
     {
         return max(array_column($itemsToCache, self::INDEX_EXP));
     }
 
     /**
-     * @param string $ip
-     * @return int
      * @throws CacheException
      */
     private function getRangeIntForIp(string $ip): int
@@ -412,7 +386,7 @@ abstract class AbstractCache
         }
         try {
             $result = intdiv($ipInt, self::IPV4_BUCKET_SIZE);
-        } catch (ArithmeticError|DivisionByZeroError $e) {
+        } catch (\ArithmeticError|\DivisionByZeroError $e) {
             throw new CacheException('Something went wrong during integer division: ' . $e->getMessage());
         }
 
@@ -420,8 +394,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param Decision $decision
-     * @param int|null $bucketInt
      * @return array|string[]
      */
     private function getTags(Decision $decision, ?int $bucketInt = null): array
@@ -430,9 +402,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param Decision $decision
-     * @param bool $streamMode
-     * @return int
      * @throws CacheException
      */
     private function handleBadIpDuration(Decision $decision, bool $streamMode): int
@@ -449,10 +418,6 @@ abstract class AbstractCache
         return $duration;
     }
 
-    /**
-     * @param Decision $decision
-     * @return RangeInterface|null
-     */
     private function manageRange(Decision $decision): ?RangeInterface
     {
         $rangeString = $decision->getValue();
@@ -479,16 +444,13 @@ abstract class AbstractCache
     }
 
     /**
-     * @param Decision $decision
-     * @param int|null $bucketInt
-     * @return CacheItemInterface
      * @throws CacheException
      * @throws InvalidArgumentException
-     * @throws Exception
+     * @throws \Exception
      */
     private function remove(Decision $decision, ?int $bucketInt = null): CacheItemInterface
     {
-        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
+        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
@@ -509,7 +471,7 @@ abstract class AbstractCache
                 $this->logger->warning('', [
                     'type' => 'CACHE_STORE_DEFERRED_FAILED_FOR_REMOVE_DECISION',
                     'decision' => $decision->toArray(),
-                    'bucket_int' => $bucketInt
+                    'bucket_int' => $bucketInt,
                 ]);
             }
         }
@@ -518,8 +480,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param Decision $decision
-     * @return CacheItemInterface
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -535,7 +495,7 @@ abstract class AbstractCache
 
         $startInt = $this->getRangeIntForIp($startAddress->toString());
         $endInt = $this->getRangeIntForIp($endAddress->toString());
-        for ($i = $startInt; $i <= $endInt; $i++) {
+        for ($i = $startInt; $i <= $endInt; ++$i) {
             $this->remove($decision, $i);
         }
 
@@ -545,6 +505,7 @@ abstract class AbstractCache
     /**
      * When Memcached connection fail, it throws an unhandled warning.
      * To catch this warning as a clean exception we have to temporarily change the error handler.
+     *
      * @throws CacheException
      */
     private function setCustomErrorHandler(): void
@@ -559,16 +520,13 @@ abstract class AbstractCache
     }
 
     /**
-     * @param Decision $decision
-     * @param int|null $bucketInt
-     * @return CacheItemInterface
      * @throws CacheException
      * @throws InvalidArgumentException
-     * @throws Exception
+     * @throws \Exception
      */
     private function store(Decision $decision, ?int $bucketInt = null): CacheItemInterface
     {
-        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
+        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
@@ -583,7 +541,7 @@ abstract class AbstractCache
             $this->logger->warning('', [
                 'type' => 'CACHE_STORE_DEFERRED_FAILED',
                 'decision' => $decision->toArray(),
-                'bucket_int' => $bucketInt
+                'bucket_int' => $bucketInt,
             ]);
         }
 
@@ -591,8 +549,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param Decision $decision
-     * @return CacheItemInterface
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -607,7 +563,7 @@ abstract class AbstractCache
 
         $startInt = $this->getRangeIntForIp($startAddress->toString());
         $endInt = $this->getRangeIntForIp($endAddress->toString());
-        for ($i = $startInt; $i <= $endInt; $i++) {
+        for ($i = $startInt; $i <= $endInt; ++$i) {
             $this->store($decision, $i);
         }
 
@@ -625,11 +581,7 @@ abstract class AbstractCache
     }
 
     /**
-     * @param CacheItemInterface $item
-     * @param array $valuesToCache
-     * @param array $tags
-     * @return CacheItemInterface
-     * @throws Exception
+     * @throws \Exception
      */
     private function updateCacheItem(CacheItemInterface $item, array $valuesToCache, array $tags): CacheItemInterface
     {

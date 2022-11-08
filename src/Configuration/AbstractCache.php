@@ -20,9 +20,8 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
 abstract class AbstractCache implements ConfigurationInterface
 {
     /**
-     * Common cache settings
+     * Common cache settings.
      *
-     * @param $rootNode
      * @return void
      */
     protected function addCommonNodes($rootNode)
