@@ -386,7 +386,7 @@ abstract class AbstractCache
         }
         try {
             $result = intdiv($ipInt, self::IPV4_BUCKET_SIZE);
-        } catch (\ArithmeticError|\DivisionByZeroError $e) {
+        } catch (\ArithmeticError | \DivisionByZeroError $e) {
             throw new CacheException('Something went wrong during integer division: ' . $e->getMessage());
         }
 

@@ -120,8 +120,8 @@ abstract class AbstractRemediation
     protected function createInternalDecision(
         string $scope,
         string $value,
-        string $type = Constants::REMEDIATION_BYPASS): Decision
-    {
+        string $type = Constants::REMEDIATION_BYPASS
+    ): Decision {
         return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
     }
 
@@ -178,14 +178,15 @@ abstract class AbstractRemediation
      */
     private function validateRawDecision(array $rawDecision): void
     {
-        if (isset(
-            $rawDecision['scope'],
-            $rawDecision['value'],
-            $rawDecision['type'],
-            $rawDecision['origin'],
-            $rawDecision['duration'],
-            $rawDecision['scenario']
-        )
+        if (
+            isset(
+                $rawDecision['scope'],
+                $rawDecision['value'],
+                $rawDecision['type'],
+                $rawDecision['origin'],
+                $rawDecision['duration'],
+                $rawDecision['scenario']
+            )
         ) {
             return;
         }

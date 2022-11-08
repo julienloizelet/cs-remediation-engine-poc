@@ -24,8 +24,8 @@ class Decision
         string $origin,
         string $duration,
         string $scenario,
-        int $id = 0)
-    {
+        int $id = 0
+    ) {
         $this->scope = $scope;
         $this->value = $value;
         $this->origin = $origin;
