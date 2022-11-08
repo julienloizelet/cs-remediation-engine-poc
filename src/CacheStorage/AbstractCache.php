@@ -7,7 +7,7 @@ namespace CrowdSec\RemediationEngine\CacheStorage;
 use CrowdSec\RemediationEngine\CacheStorage\Memcached\TagAwareAdapter as MemcachedTagAwareAdapter;
 use CrowdSec\RemediationEngine\Constants;
 use CrowdSec\RemediationEngine\Decision;
-use Exception;
+use DateTime;
 use IPLib\Address\Type;
 use IPLib\Factory;
 use IPLib\Range\RangeInterface;
@@ -293,7 +293,7 @@ abstract class AbstractCache
         return (int) round($seconds);
     }
 
-    private function cleanCachedValues(array $cachedValues, string $identifier, bool $flagIsCached = false): array
+    private function cleanCachedValues(array $cachedValues, string $identifier, bool $flagIsCached): array
     {
         foreach ($cachedValues as $key => $cachedValue) {
             // Remove value with the same identifier
@@ -418,6 +418,9 @@ abstract class AbstractCache
         return $duration;
     }
 
+    /**
+     * @SuppressWarnings(PHPMD.StaticAccess)
+     */
     private function manageRange(Decision $decision): ?RangeInterface
     {
         $rangeString = $decision->getValue();
@@ -530,7 +533,7 @@ abstract class AbstractCache
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
-        $cachedValues = $item->isHit() ? $this->cleanCachedValues($item->get(), $decision->getIdentifier()) : [];
+        $cachedValues = $item->isHit() ? $this->cleanCachedValues($item->get(), $decision->getIdentifier(), false) : [];
         // Merge current value with cached values (if any).
         $currentValue = $bucketInt ? $this->formatIpV4Range($decision) : $this->format($decision);
         $decisionsToCache = array_merge($cachedValues, [$currentValue]);
@@ -587,7 +590,7 @@ abstract class AbstractCache
     {
         $maxExpiration = $this->getMaxExpiration($valuesToCache);
         $item->set($valuesToCache);
-        $item->expiresAt(new \DateTime('@' . $maxExpiration));
+        $item->expiresAt(new DateTime('@' . $maxExpiration));
         $item->tag($tags);
 
         return $item;
