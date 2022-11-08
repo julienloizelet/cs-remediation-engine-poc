@@ -70,21 +70,15 @@ class CapiRemediation extends AbstractRemediation
     {
         $rawDecisions = $this->client->getStreamDecisions();
         /*$rawDecisions = [
+            'new' => [
+            ],
             'deleted' => [
                 ["duration" => "147h",
-                    "origin" => "CAPI2",
-                    "scenario" => "manual",
-                    "scope" => "range",
-                    "type" => "ban",
-                    "value" => "52.3.230.1/24"],
-                ["duration" => "147h",
-                    "origin" => "CAPI",
+                    "origin" => "CAPI12",
                     "scenario" => "manual",
                     "scope" => "range",
                     "type" => "ban",
                     "value" => "52.3.230.0/24"]
-            ],
-            'new' => [
             ]
         ];*/
         $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['new'] ?? []);

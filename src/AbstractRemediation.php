@@ -74,7 +74,7 @@ abstract class AbstractRemediation
             $this->cacheStorage->removeDecision($decision);
         }
 
-        return $decisions ? $this->cacheStorage->commit() : true;
+        return !$decisions || $this->cacheStorage->commit();
     }
 
     /**
