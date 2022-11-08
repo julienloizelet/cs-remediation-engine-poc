@@ -74,34 +74,46 @@ abstract class AbstractRemediation
 
     /**
      * Pull fresh decisions and update the cache.
+     * Return the total of added and removed records. // ['new' => x, 'deleted' => y].
      */
-    abstract public function refreshDecisions(): bool;
+    abstract public function refreshDecisions(): array;
 
     /**
+     * Remove decisions from cache.
+     *
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    public function removeDecisions(array $decisions): bool
+    public function removeDecisions(array $decisions): int
     {
+        if (!$decisions) {
+            return 0;
+        }
+        $result = 0;
         foreach ($decisions as $decision) {
-            $this->cacheStorage->removeDecision($decision);
+            $result += $this->cacheStorage->removeDecision($decision);
         }
 
-        return !$decisions || $this->cacheStorage->commit();
+        return $this->cacheStorage->commit() ? $result : 0;
     }
 
     /**
+     * Add decisions in cache.
+     *
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    public function storeDecisions(array $decisions): bool
+    public function storeDecisions(array $decisions): int
     {
-        /** @var Decision $decision */
+        $result = 0;
+        if (!$decisions) {
+            return 0;
+        }
         foreach ($decisions as $decision) {
-            $this->cacheStorage->storeDecision($decision);
+            $result += $this->cacheStorage->storeDecision($decision);
         }
 
-        return !$decisions || $this->cacheStorage->commit();
+        return $this->cacheStorage->commit() ? $result : 0;
     }
 
     /**
@@ -142,6 +154,7 @@ abstract class AbstractRemediation
      * Compare two priorities.
      *
      * @noinspection PhpUnusedPrivateMethodInspection
+     *
      * @SuppressWarnings(PHPMD.UnusedPrivateMethod)
      */
     private static function comparePriorities(array $a, array $b): int

@@ -13,8 +13,6 @@ use Symfony\Component\Config\Definition\Processor;
 class Redis extends AbstractCache
 {
     /**
-     * @param array $configs
-     * @param LoggerInterface|null $logger
      * @throws CacheException
      *
      * @SuppressWarnings(PHPMD.StaticAccess)

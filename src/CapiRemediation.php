@@ -19,7 +19,7 @@ class CapiRemediation extends AbstractRemediation
      */
     private $client;
 
-    /** @var array<string> The list of each known CAPI remediation, sorted by priority */
+    /** @var array The list of each known CAPI remediation, sorted by priority */
     public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
 
     public function __construct(
@@ -36,6 +36,8 @@ class CapiRemediation extends AbstractRemediation
     }
 
     /**
+     * {@inheritdoc}
+     *
      * @throws CacheException
      * @throws InvalidArgumentException
      */
@@ -60,6 +62,7 @@ class CapiRemediation extends AbstractRemediation
         }
 
         $allDecisions = $this->sortDecisionsByRemediationPriority($allDecisions);
+
         // Return only a remediation with the highest priority
         return $allDecisions[0][AbstractCache::INDEX_VALUE] ?? Constants::REMEDIATION_BYPASS;
     }
@@ -75,28 +78,39 @@ class CapiRemediation extends AbstractRemediation
     }
 
     /**
+     * {@inheritdoc}
+     *
      * @throws CacheException
      * @throws InvalidArgumentException
      * @throws RemediationException
      */
-    public function refreshDecisions(): bool
+    public function refreshDecisions(): array
     {
         $rawDecisions = $this->client->getStreamDecisions();
-        /*$rawDecisions = [
-            'new' => [
-            ],
-            'deleted' => [
-                ["duration" => "147h",
-                    "origin" => "CAPI12",
-                    "scenario" => "manual",
-                    "scope" => "range",
-                    "type" => "ban",
-                    "value" => "52.3.230.0/24"]
-            ]
-        ];*/
+        /* $rawDecisions = [
+             'deleted' => [
+                 ["duration" => "147h",
+                     "origin" => "CAPI12",
+                     "scenario" => "manual",
+                     "scope" => "range",
+                     "type" => "ban",
+                     "value" => "52.3.230.0/24"],
+             ],
+             'new' => [
+                 ["duration" => "147h",
+                     "origin" => "CAPI",
+                     "scenario" => "manual",
+                     "scope" => "range",
+                     "type" => "ban",
+                     "value" => "1.2.3.4/24"]
+             ]
+         ];*/
         $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['new'] ?? []);
         $deletedDecisions = $this->convertRawDecisionsToDecisions($rawDecisions['deleted'] ?? []);
 
-        return $this->storeDecisions($newDecisions) && $this->removeDecisions($deletedDecisions);
+        return [
+            'new' => $this->storeDecisions($newDecisions),
+            'deleted' => $this->removeDecisions($deletedDecisions),
+        ];
     }
 }
