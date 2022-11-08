@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine;
 
-use ArithmeticError;
 use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
+use CrowdSec\RemediationEngine\CacheStorage\CacheException;
 use CrowdSec\RemediationEngine\Configuration\Capi as CapiRemediationConfig;
 use CrowdSec\CapiClient\Watcher;
-use DivisionByZeroError;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Config\Definition\Processor;
@@ -46,9 +45,7 @@ class CapiRemediation extends AbstractRemediation
     /**
      * @param string $ip
      * @return string
-     * @throws CacheStorage\CacheException
-     * @throws ArithmeticError
-     * @throws DivisionByZeroError
+     * @throws CacheException
      * @throws InvalidArgumentException
      */
     public function getIpRemediation(string $ip): string
@@ -72,7 +69,7 @@ class CapiRemediation extends AbstractRemediation
         }
 
         $allDecisions = $this->sortDecisionsByRemediationPriority($allDecisions);
-        // Return only a remediation with hightest priority
+        // Return only a remediation with the highest priority
         return $allDecisions[0][AbstractCache::INDEX_VALUE] ?? Constants::REMEDIATION_BYPASS;
     }
 
@@ -91,6 +88,9 @@ class CapiRemediation extends AbstractRemediation
 
     /**
      * @return bool
+     * @throws CacheException
+     * @throws InvalidArgumentException
+     * @throws RemediationException
      */
     public function refreshDecisions(): bool
     {

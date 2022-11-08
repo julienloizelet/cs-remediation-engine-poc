@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace CrowdSec\RemediationEngine\Configuration;
 
 use CrowdSec\RemediationEngine\Constants;
-use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
 /**
@@ -23,9 +22,8 @@ abstract class AbstractCache implements ConfigurationInterface
     /**
      * Common cache settings
      *
-     * @param NodeDefinition|ArrayNodeDefinition $rootNode
+     * @param $rootNode
      * @return void
-     * @throws InvalidArgumentException
      */
     protected function addCommonNodes($rootNode)
     {

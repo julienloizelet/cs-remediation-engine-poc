@@ -33,7 +33,9 @@ class FileLog extends Logger
      */
     public const PROD_FILE = 'prod.log';
 
-
+    /**
+     * @param array $configs
+     */
     public function __construct(array $configs = [])
     {
         parent::__construct(self::LOGGER_NAME);

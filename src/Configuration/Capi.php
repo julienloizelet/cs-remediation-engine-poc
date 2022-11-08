@@ -6,6 +6,7 @@ namespace CrowdSec\RemediationEngine\Configuration;
 
 use CrowdSec\RemediationEngine\CapiRemediation;
 use CrowdSec\RemediationEngine\Constants;
+use RuntimeException;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -22,8 +23,10 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  */
 class Capi implements ConfigurationInterface
 {
+
     /**
      * @return TreeBuilder
+     * @throws RuntimeException
      */
     public function getConfigTreeBuilder(): TreeBuilder
     {
@@ -54,14 +57,11 @@ class Capi implements ConfigurationInterface
     }
 
 
-
     /**
      * Conditional validation
      *
-     * @param NodeDefinition|ArrayNodeDefinition $rootNode
+     * @param $rootNode
      * @return void
-     * @throws InvalidArgumentException
-     * @throws RuntimeException
      */
     private function validate($rootNode)
     {

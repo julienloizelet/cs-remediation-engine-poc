@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine;
 
-use ArithmeticError;
 use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
 use CrowdSec\RemediationEngine\CacheStorage\CacheException;
-use DivisionByZeroError;
 use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use Psr\Cache\InvalidArgumentException;
@@ -97,8 +95,6 @@ abstract class AbstractRemediation
      * @param array $decisions
      * @return bool
      * @throws CacheException
-     * @throws ArithmeticError
-     * @throws DivisionByZeroError
      * @throws InvalidArgumentException
      */
     public function removeDecisions(array $decisions): bool
@@ -113,9 +109,7 @@ abstract class AbstractRemediation
     /**
      * @param array $decisions
      * @return bool
-     * @throws ArithmeticError
      * @throws CacheException
-     * @throws DivisionByZeroError
      * @throws InvalidArgumentException
      */
     public function storeDecisions(array $decisions): bool

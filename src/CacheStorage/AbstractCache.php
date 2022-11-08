@@ -170,9 +170,7 @@ abstract class AbstractCache
     /**
      * @param Decision $decision
      * @return CacheItemInterface
-     * @throws ArithmeticError
      * @throws CacheException
-     * @throws DivisionByZeroError
      * @throws InvalidArgumentException
      */
     public function removeDecision(Decision $decision): CacheItemInterface
@@ -200,9 +198,7 @@ abstract class AbstractCache
      * @param string $scope
      * @param string $ip
      * @return array
-     * @throws ArithmeticError
      * @throws CacheException
-     * @throws DivisionByZeroError
      * @throws InvalidArgumentException
      */
     public function retrieveDecisionsForIp(string $scope, string $ip): array
@@ -253,9 +249,7 @@ abstract class AbstractCache
     /**
      * @param Decision $decision
      * @return CacheItemInterface
-     * @throws ArithmeticError
      * @throws CacheException
-     * @throws DivisionByZeroError
      * @throws InvalidArgumentException
      */
     public function storeDecision(Decision $decision): CacheItemInterface
@@ -408,12 +402,21 @@ abstract class AbstractCache
     /**
      * @param string $ip
      * @return int
-     * @throws ArithmeticError
-     * @throws DivisionByZeroError
+     * @throws CacheException
      */
     private function getRangeIntForIp(string $ip): int
     {
-        return intdiv(ip2long($ip), self::IPV4_BUCKET_SIZE);
+        $ipInt = ip2long($ip);
+        if (false === $ipInt) {
+            throw new CacheException("$ip is not a valid IpV4 address");
+        }
+        try {
+            $result = intdiv($ipInt, self::IPV4_BUCKET_SIZE);
+        } catch (ArithmeticError|DivisionByZeroError $e) {
+            throw new CacheException('Something went wrong during integer division: ' . $e->getMessage());
+        }
+
+        return $result;
     }
 
     /**
@@ -517,9 +520,7 @@ abstract class AbstractCache
     /**
      * @param Decision $decision
      * @return CacheItemInterface
-     * @throws ArithmeticError
      * @throws CacheException
-     * @throws DivisionByZeroError
      * @throws InvalidArgumentException
      */
     private function removeRangeScoped(Decision $decision): CacheItemInterface
@@ -592,9 +593,7 @@ abstract class AbstractCache
     /**
      * @param Decision $decision
      * @return CacheItemInterface
-     * @throws ArithmeticError
      * @throws CacheException
-     * @throws DivisionByZeroError
      * @throws InvalidArgumentException
      */
     private function storeRangeScoped(Decision $decision): CacheItemInterface
