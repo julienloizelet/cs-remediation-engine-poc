@@ -27,7 +27,7 @@
         </UndefinedDocblockClass>
         <UndefinedInterfaceMethod>
             <errorLevel type="info">
-                <referencedMethod name="Symfony\Component\Cache\Adapter\TagAwareAdapterInterface::delete"/>
+                <referencedMethod name="Psr\Cache\CacheItemInterface::tag"/>
             </errorLevel>
         </UndefinedInterfaceMethod>
         <PossiblyUndefinedMethod>

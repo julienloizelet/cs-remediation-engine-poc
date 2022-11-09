@@ -86,25 +86,25 @@ class CapiRemediation extends AbstractRemediation
      */
     public function refreshDecisions(): array
     {
-        $rawDecisions = $this->client->getStreamDecisions();
-        /*$rawDecisions = [
-             'new' => [
-                 ["duration" => "147h",
-                     "origin" => "CAPI12",
-                     "scenario" => "manual",
-                     "scope" => "range",
-                     "type" => "ban",
-                     "value" => "52.3.230.0/24"],
-             ],
+        // $rawDecisions = $this->client->getStreamDecisions();
+        $rawDecisions = [
              'deleted' => [
-                 ["duration" => "147h",
-                     "origin" => "CAPI",
-                     "scenario" => "manual",
-                     "scope" => "range",
-                     "type" => "ban",
-                     "value" => "52.3.230.0/24"]
-             ]
-         ];*/
+                 ['duration' => '147h',
+                     'origin' => 'CAPI12',
+                     'scenario' => 'manual',
+                     'scope' => 'range',
+                     'type' => 'ban',
+                     'value' => '52.3.230.0/24', ],
+             ],
+             'new' => [
+                 ['duration' => '147h',
+                     'origin' => 'CAPI',
+                     'scenario' => 'manual',
+                     'scope' => 'range',
+                     'type' => 'ban',
+                     'value' => '52.3.230.0/24', ],
+             ],
+         ];
         $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions[self::CS_NEW] ?? []);
         $deletedDecisions = $this->convertRawDecisionsToDecisions($rawDecisions[self::CS_DEL] ?? []);
 

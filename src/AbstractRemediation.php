@@ -13,10 +13,10 @@ use Psr\Log\LoggerInterface;
 
 abstract class AbstractRemediation
 {
-    /** @var string  The CrowdSec name for new decisions */
+    /** @var string The CrowdSec name for new decisions */
     public const CS_NEW = 'new';
 
-    /** @var string  The CrowdSec name for deleted decisions */
+    /** @var string The CrowdSec name for deleted decisions */
     public const CS_DEL = 'deleted';
 
     /**
@@ -45,8 +45,6 @@ abstract class AbstractRemediation
 
     /**
      * Clear cache.
-     *
-     * @throws CacheStorage\CacheException
      */
     public function clearCache(): bool
     {
@@ -54,7 +52,7 @@ abstract class AbstractRemediation
     }
 
     /**
-     * Retrieve a flat config value by name.
+     * Retrieve a config by name.
      *
      * @return mixed|null
      */
@@ -101,7 +99,6 @@ abstract class AbstractRemediation
             $removeResult = $this->cacheStorage->removeDecision($decision);
             $deferCount += $removeResult[AbstractCache::DEFER];
             $doneCount += $removeResult[AbstractCache::DONE];
-
         }
 
         return $doneCount + ($this->cacheStorage->commit() ? $deferCount : 0);
@@ -147,8 +144,7 @@ abstract class AbstractRemediation
         string $scope,
         string $value,
         string $type = Constants::REMEDIATION_BYPASS
-    ): Decision
-    {
+    ): Decision {
         return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
     }
 

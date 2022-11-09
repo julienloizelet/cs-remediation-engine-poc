@@ -13,6 +13,7 @@ class Memcached extends AbstractCache
 {
     /**
      * Using a MemcachedAdapter with a TagAwareAdapter for storing tags is discouraged.
+     *
      * @see \Symfony\Component\Cache\Adapter\MemcachedAdapter::__construct comment
      *
      * @throws CacheException
