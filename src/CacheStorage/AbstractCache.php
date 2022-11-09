@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace CrowdSec\RemediationEngine\CacheStorage;
 
-use CrowdSec\RemediationEngine\CacheStorage\Memcached\TagAwareAdapter as MemcachedTagAwareAdapter;
 use CrowdSec\RemediationEngine\Constants;
 use CrowdSec\RemediationEngine\Decision;
 use IPLib\Address\Type;
@@ -15,16 +14,25 @@ use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use Psr\Cache\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\TagAwareAdapterInterface;
 use Symfony\Component\Cache\PruneableInterface;
-use Symfony\Contracts\Cache\ItemInterface;
+use Psr\Cache\CacheItemInterface;
 
 abstract class AbstractCache
 {
-    /** @var int Cached array is cached index */
-    public const CACHED_FLAG = 'is_cached';
     /** @var string Cache symbol */
     public const CACHE_SEP = '_';
+    /** @var string Internal name for stored cache item */
+    public const NEW = 'new';
+    /** @var string Internal name for deferred cache item */
+    public const DEFER = 'deferred';
+    /** @var string Internal name for effective saved cache item (not deferred) */
+    public const DONE = 'done';
+    /** @var string Remove type flag */
+    private const REMOVE = 'remove';
+    /** @var string Store type flag */
+    private const STORE = 'store';
     /**
      * @var int Maximum duration for a cache item
      *          Forever is 10 years as PHP_INT_MAX will cause trouble with the Memcached Adapter
@@ -45,7 +53,7 @@ abstract class AbstractCache
     private const IPV4_BUCKET_SIZE = 256;
     /** @var string The cache tag for range bucket cache item */
     private const RANGE_BUCKET_TAG = 'RANGE_BUCKET';
-    /** @var TagAwareAdapterInterface */
+    /** @var AdapterInterface */
     protected $adapter;
     /**
      * @var array
@@ -60,7 +68,7 @@ abstract class AbstractCache
      */
     private $cacheKeys = [];
 
-    public function __construct(array $configs, TagAwareAdapterInterface $adapter, LoggerInterface $logger = null)
+    public function __construct(array $configs, AdapterInterface $adapter, LoggerInterface $logger = null)
     {
         $this->configs = $configs;
         $this->adapter = $adapter;
@@ -162,21 +170,21 @@ abstract class AbstractCache
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    public function removeDecision(Decision $decision): int
+    public function removeDecision(Decision $decision): array
     {
+        $result = [self::DONE => 0, self::DEFER => 0];
         switch ($decision->getScope()) {
             case Constants::SCOPE_IP:
                 $result = $this->remove($decision);
                 break;
             case Constants::SCOPE_RANGE:
-                $result = $this->removeRangeScoped($decision);
+                $result = $this->handleRangeScoped($decision, self::REMOVE);
                 break;
             default:
                 $this->logger->warning('', [
                     'type' => 'CACHE_REMOVE_NON_IMPLEMENTED_SCOPE',
                     'decision' => $decision->toArray(),
                 ]);
-                $result = 0;
                 break;
         }
 
@@ -237,21 +245,21 @@ abstract class AbstractCache
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    public function storeDecision(Decision $decision): int
+    public function storeDecision(Decision $decision): array
     {
+        $result = [self::DONE => 0, self::DEFER => 0];
         switch ($decision->getScope()) {
             case Constants::SCOPE_IP:
                 $result = $this->store($decision);
                 break;
             case Constants::SCOPE_RANGE:
-                $result = $this->storeRangeScoped($decision);
+                $result = $this->handleRangeScoped($decision, self::STORE);
                 break;
             default:
                 $this->logger->warning('', [
                     'type' => 'CACHE_STORE_NON_IMPLEMENTED_SCOPE',
                     'decision' => $decision->toArray(),
                 ]);
-                $result = 0;
         }
 
         return $result;
@@ -290,18 +298,9 @@ abstract class AbstractCache
         return (int)round($seconds);
     }
 
-    private function cleanCachedValues(array $cachedValues, string $identifier, bool $flagIsCached): array
+    private function cleanCachedValues(array $cachedValues): array
     {
         foreach ($cachedValues as $key => $cachedValue) {
-            // Remove value with the same identifier
-            if ($identifier === $cachedValue[self::INDEX_ID]) {
-                // Flag to know that value was in cached
-                if ($flagIsCached) {
-                    $cachedValues[self::CACHED_FLAG] = true;
-                }
-                unset($cachedValues[$key]);
-                continue;
-            }
             // Remove expired value
             $currentTime = time();
             if ($currentTime > $cachedValue[self::INDEX_EXP]) {
@@ -440,32 +439,34 @@ abstract class AbstractCache
      * @throws InvalidArgumentException
      * @throws \Exception
      */
-    private function remove(Decision $decision, ?int $bucketInt = null): int
+    private function remove(Decision $decision, ?int $bucketInt = null): array
     {
-        $result = 0;
+        $result = [self::DONE => 0, self::DEFER => 0];
         $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
         if ($item->isHit()) {
-            $result = 1;
-            $cachedValues = $this->cleanCachedValues($item->get(), $decision->getIdentifier(), true);
-            if (!isset($cachedValues[self::CACHED_FLAG])) {
-                return 0;
+            $cachedValues = $item->get();
+            if(!$this->isCached($decision->getIdentifier(), $cachedValues)){
+                return $result;
             }
-            unset($cachedValues[self::CACHED_FLAG]);
+            $cachedValues = $this->cleanCachedValues($cachedValues);
             if (!$cachedValues) {
-                return (int)$this->adapter->deleteItem(base64_encode($cacheKey));
+                $result[self::DONE] = (int)$this->adapter->deleteItem(base64_encode($cacheKey));
+
+                return $result;
             }
             $tags = $this->getTags($decision, $bucketInt);
             $item = $this->updateCacheItem($item, $cachedValues, $tags);
+            $result[self::DEFER] = 1;
             if (!$this->adapter->saveDeferred($item)) {
                 $this->logger->warning('', [
                     'type' => 'CACHE_STORE_DEFERRED_FAILED_FOR_REMOVE_DECISION',
                     'decision' => $decision->toArray(),
                     'bucket_int' => $bucketInt,
                 ]);
-                $result = 0;
+                $result[self::DEFER] = 0;
             }
         }
 
@@ -473,85 +474,75 @@ abstract class AbstractCache
     }
 
     /**
-     * @throws CacheException
-     * @throws InvalidArgumentException
-     */
-    private function removeRangeScoped(Decision $decision): int
-    {
-        $range = $this->manageRange($decision);
-        if (!$range) {
-            return 0;
-        }
-
-        $startAddress = $range->getStartAddress();
-        $endAddress = $range->getEndAddress();
-
-        $startInt = $this->getRangeIntForIp($startAddress->toString());
-        $endInt = $this->getRangeIntForIp($endAddress->toString());
-        for ($i = $startInt; $i <= $endInt; ++$i) {
-            $this->remove($decision, $i);
-        }
-
-        return $this->remove($decision);
-    }
-
-    /**
-     * When Memcached connection fail, it throws an unhandled warning.
-     * To catch this warning as a clean exception we have to temporarily change the error handler.
+     * Set a custom handler if necessary.
      *
-     * @throws CacheException
+     * @see \CrowdSec\RemediationEngine\CacheStorage\Memcached
+     *
      */
-    private function setCustomErrorHandler(): void
+    protected function setCustomErrorHandler(): void
     {
-        if ($this->adapter instanceof MemcachedTagAwareAdapter) {
-            set_error_handler(function ($errno, $errstr) {
-                $message = "Error when connecting to Memcached. (Error level: $errno)" .
-                           "Original error was: $errstr";
-                throw new CacheException($message);
-            });
-        }
     }
 
     /**
+     * Check if some identifier is already cached.
+     *
+     */
+    private function isCached(string $identifier, array $cachedValues): bool
+    {
+        $result = array_search($identifier, array_column($cachedValues, self::INDEX_ID));
+        return $result !== false;
+    }
+
+
+    /**
+     * @param Decision $decision
+     * @param int|null $bucketInt
+     * @return int[]
      * @throws CacheException
      * @throws InvalidArgumentException
-     * @throws \Exception
      */
-    private function store(Decision $decision, ?int $bucketInt = null): int
+    private function store(Decision $decision, ?int $bucketInt = null): array
     {
-        $result = 1;
         $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
+        $cachedValues = $item->isHit() ? $item->get() : [];
+        if($this->isCached($decision->getIdentifier(), $cachedValues)){
+            return [self::DONE => 0, self::DEFER => 0];
+        }
+        $cachedValues = $this->cleanCachedValues($cachedValues);
 
-        $cachedValues = $item->isHit() ? $this->cleanCachedValues($item->get(), $decision->getIdentifier(), false) : [];
         // Merge current value with cached values (if any).
         $currentValue = $bucketInt ? $this->formatIpV4Range($decision) : $this->format($decision);
         $decisionsToCache = array_merge($cachedValues, [$currentValue]);
         // Rebuild cache item
         $item = $this->updateCacheItem($item, $decisionsToCache, $this->getTags($decision, $bucketInt));
 
+        $result = [self::DONE => 0, self::DEFER => 1];
         if (!$this->adapter->saveDeferred($item)) {
             $this->logger->warning('', [
                 'type' => 'CACHE_STORE_DEFERRED_FAILED',
                 'decision' => $decision->toArray(),
                 'bucket_int' => $bucketInt,
             ]);
-            $result = 0;
+            $result[self::DEFER] = 0;
         }
 
         return $result;
     }
 
     /**
+     * @param Decision $decision
+     * @param string $type
+     * @return int[]
      * @throws CacheException
      * @throws InvalidArgumentException
      */
-    private function storeRangeScoped(Decision $decision): int
+    private function handleRangeScoped(Decision $decision, string $type): array
     {
         $range = $this->manageRange($decision);
         if (!$range) {
-            return 0;
+            return [self::DONE => 0, self::DEFER => 0];
         }
         $startAddress = $range->getStartAddress();
         $endAddress = $range->getEndAddress();
@@ -559,32 +550,32 @@ abstract class AbstractCache
         $startInt = $this->getRangeIntForIp($startAddress->toString());
         $endInt = $this->getRangeIntForIp($endAddress->toString());
         for ($i = $startInt; $i <= $endInt; ++$i) {
-            $this->store($decision, $i);
+            if ($type === self::STORE) {
+                $this->store($decision, $i);
+            } else {
+                $this->remove($decision, $i);
+            }
         }
 
-        return $this->store($decision);
+        return $type === self::STORE ? $this->store($decision) : $this->remove($decision);
     }
 
-    /**
-     * When the selected cache adapter is MemcachedAdapter, revert to the previous error handler.
-     * */
-    private function unsetCustomErrorHandler(): void
+    protected function unsetCustomErrorHandler(): void
     {
-        if ($this->adapter instanceof MemcachedTagAwareAdapter) {
-            restore_error_handler();
-        }
     }
 
     /**
      * @throws \Exception
      * @SuppressWarnings(PHPMD.MissingImport)
      */
-    private function updateCacheItem(ItemInterface $item, array $valuesToCache, array $tags): ItemInterface
+    private function updateCacheItem(CacheItemInterface $item, array $valuesToCache, array $tags): CacheItemInterface
     {
         $maxExpiration = $this->getMaxExpiration($valuesToCache);
         $item->set($valuesToCache);
         $item->expiresAt(new \DateTime('@' . $maxExpiration));
-        $item->tag($tags);
+        if ($this->adapter instanceof TagAwareAdapterInterface) {
+            $item->tag($tags);
+        }
 
         return $item;
     }

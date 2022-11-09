@@ -13,6 +13,12 @@ use Psr\Log\LoggerInterface;
 
 abstract class AbstractRemediation
 {
+    /** @var string  The CrowdSec name for new decisions */
+    public const CS_NEW = 'new';
+
+    /** @var string  The CrowdSec name for deleted decisions */
+    public const CS_DEL = 'deleted';
+
     /**
      * @var AbstractCache
      */
@@ -89,12 +95,16 @@ abstract class AbstractRemediation
         if (!$decisions) {
             return 0;
         }
-        $result = 0;
+        $deferCount = 0;
+        $doneCount = 0;
         foreach ($decisions as $decision) {
-            $result += $this->cacheStorage->removeDecision($decision);
+            $removeResult = $this->cacheStorage->removeDecision($decision);
+            $deferCount += $removeResult[AbstractCache::DEFER];
+            $doneCount += $removeResult[AbstractCache::DONE];
+
         }
 
-        return $this->cacheStorage->commit() ? $result : 0;
+        return $doneCount + ($this->cacheStorage->commit() ? $deferCount : 0);
     }
 
     /**
@@ -107,13 +117,17 @@ abstract class AbstractRemediation
     {
         $result = 0;
         if (!$decisions) {
-            return 0;
+            return $result;
         }
+        $deferCount = 0;
+        $doneCount = 0;
         foreach ($decisions as $decision) {
-            $result += $this->cacheStorage->storeDecision($decision);
+            $storeResult = $this->cacheStorage->storeDecision($decision);
+            $deferCount += $storeResult[AbstractCache::DEFER];
+            $doneCount += $storeResult[AbstractCache::DONE];
         }
 
-        return $this->cacheStorage->commit() ? $result : 0;
+        return $doneCount + ($this->cacheStorage->commit() ? $deferCount : 0);
     }
 
     /**
@@ -133,7 +147,8 @@ abstract class AbstractRemediation
         string $scope,
         string $value,
         string $type = Constants::REMEDIATION_BYPASS
-    ): Decision {
+    ): Decision
+    {
         return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
     }
 
