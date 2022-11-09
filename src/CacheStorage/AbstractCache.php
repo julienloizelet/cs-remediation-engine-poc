@@ -45,8 +45,6 @@ abstract class AbstractCache
     private const IPV4_BUCKET_KEY = 'RANGE_BUCKET_IPV4';
     /** @var int The size of ipv4 range cache bucket */
     private const IPV4_BUCKET_SIZE = 256;
-    /** @var string Internal name for stored cache item */
-    public const NEW = 'new';
     /** @var string The cache tag for range bucket cache item */
     private const RANGE_BUCKET_TAG = 'RANGE_BUCKET';
     /** @var AdapterInterface */
