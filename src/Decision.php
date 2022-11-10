@@ -26,7 +26,7 @@ class Decision
         string $scenario,
         int $id = 0
     ) {
-        $this->scope = $scope;
+        $this->scope = strtolower($scope);
         $this->value = $value;
         $this->origin = $origin;
         $this->duration = $duration;
@@ -44,10 +44,10 @@ class Decision
     private function handleIdentifier(int $id): string
     {
         return $id > 0 ? (string) $id :
-            $this->getOrigin() . self::ID_SEP .
-            $this->getType() . self::ID_SEP .
-            $this->getScope() . self::ID_SEP .
-            $this->getValue();
+            $this->origin . self::ID_SEP .
+            $this->type . self::ID_SEP .
+            $this->scope . self::ID_SEP .
+            $this->value;
     }
 
     public function getDuration(): string

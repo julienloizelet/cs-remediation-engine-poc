@@ -188,7 +188,7 @@ abstract class AbstractRemediation
 
         return new Decision(
             $this,
-            ucfirst($rawDecision['scope']),
+            $rawDecision['scope'],
             $rawDecision['value'],
             $rawDecision['type'],
             $rawDecision['origin'],

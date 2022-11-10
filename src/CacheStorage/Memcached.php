@@ -35,12 +35,46 @@ class Memcached extends AbstractCache
     }
 
     /**
+     * {@inheritdoc}
+     *
+     * @throws CacheException
+     */
+    public function clear(): bool
+    {
+        $this->setCustomErrorHandler();
+        try {
+            $cleared = parent::clear();
+        } finally {
+            $this->unsetCustomErrorHandler();
+        }
+
+        return $cleared;
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * @throws CacheException
+     */
+    public function commit(): bool
+    {
+        $this->setCustomErrorHandler();
+        try {
+            $result = parent::commit();
+        } finally {
+            $this->unsetCustomErrorHandler();
+        }
+
+        return $result;
+    }
+
+    /**
      * When Memcached connection fail, it throws an unhandled warning.
      * To catch this warning as a clean exception we have to temporarily change the error handler.
      *
      * @throws CacheException
      */
-    protected function setCustomErrorHandler(): void
+    private function setCustomErrorHandler(): void
     {
         set_error_handler(function ($errno, $errstr) {
             $message = "Memcached error. (Error level: $errno) " .
@@ -52,7 +86,7 @@ class Memcached extends AbstractCache
     /**
      * When the selected cache adapter is MemcachedAdapter, revert to the previous error handler.
      * */
-    protected function unsetCustomErrorHandler(): void
+    private function unsetCustomErrorHandler(): void
     {
         restore_error_handler();
     }

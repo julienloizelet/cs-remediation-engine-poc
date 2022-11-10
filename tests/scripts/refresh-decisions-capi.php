@@ -22,7 +22,6 @@ $capiClient = new Watcher($clientConfigs, new FileStorage(), null, $logger);
 // Init PhpFile Cache storage
 $cacheFileConfigs = [
     'fs_cache_path' => __DIR__ . '/.cache',
-    'clean_ip_cache_duration' => 1200,
 ];
 $phpFileCache = new PhpFiles($cacheFileConfigs, $logger);
 // Init Memcached Cache storage
@@ -37,6 +36,7 @@ $cacheRedisConfigs = [
 $redisCache = new Redis($cacheRedisConfigs, $logger);
 
 $remediationConfigs = [];
-$remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $phpFileCache, $logger);
+
+$remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $redisCache, $logger);
 
 echo json_encode($remediationEngine->refreshDecisions()) . \PHP_EOL;

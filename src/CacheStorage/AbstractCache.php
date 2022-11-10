@@ -73,28 +73,24 @@ abstract class AbstractCache
         $this->logger = $logger;
     }
 
+    /**
+     * Deletes all items in the pool.
+     *
+     * @return bool
+     */
     public function clear(): bool
     {
-        $this->setCustomErrorHandler();
-        try {
-            $cleared = $this->adapter->clear();
-        } finally {
-            $this->unsetCustomErrorHandler();
-        }
-
-        return $cleared;
+        return $this->adapter->clear();
     }
 
+    /**
+     * Persists any deferred cache items.
+     *
+     * @return bool
+     */
     public function commit(): bool
     {
-        $this->setCustomErrorHandler();
-        try {
-            $result = $this->adapter->commit();
-        } finally {
-            $this->unsetCustomErrorHandler();
-        }
-
-        return $result;
+        return $this->adapter->commit();
     }
 
     /**
@@ -196,7 +192,7 @@ abstract class AbstractCache
                 break;
             case Constants::SCOPE_RANGE:
                 $bucketInt = $this->getRangeIntForIp($ip);
-                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt);
+                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt);
                 $bucketItem = $this->adapter->getItem(base64_encode($bucketCacheKey));
                 $cachedBuckets = $bucketItem->isHit() ? $bucketItem->get() : [];
                 foreach ($cachedBuckets as $cachedBucket) {
@@ -267,13 +263,13 @@ abstract class AbstractCache
         }
         $seconds = 0;
         if (isset($matches[2])) {
-            $seconds += ((int) $matches[2]) * 3600; // hours
+            $seconds += ((int)$matches[2]) * 3600; // hours
         }
         if (isset($matches[3])) {
-            $seconds += ((int) $matches[3]) * 60; // minutes
+            $seconds += ((int)$matches[3]) * 60; // minutes
         }
         if (isset($matches[4])) {
-            $seconds += ((int) $matches[4]); // seconds
+            $seconds += ((int)$matches[4]); // seconds
         }
         if (isset($matches[5]) && 'm' === $matches[5]) { // units in milliseconds
             $seconds *= 0.001;
@@ -282,20 +278,7 @@ abstract class AbstractCache
             $seconds *= -1;
         }
 
-        return (int) round($seconds);
-    }
-
-    /**
-     * Set a custom handler if necessary.
-     *
-     * @see \CrowdSec\RemediationEngine\CacheStorage\Memcached
-     */
-    protected function setCustomErrorHandler(): void
-    {
-    }
-
-    protected function unsetCustomErrorHandler(): void
-    {
+        return (int)round($seconds);
     }
 
     private function cleanCachedValues(array $cachedValues): array
@@ -384,7 +367,7 @@ abstract class AbstractCache
         }
         try {
             $result = intdiv($ipInt, self::IPV4_BUCKET_SIZE);
-        } catch (\ArithmeticError | \DivisionByZeroError $e) {
+        } catch (\ArithmeticError|\DivisionByZeroError $e) {
             throw new CacheException('Something went wrong during integer division: ' . $e->getMessage());
         }
 
@@ -475,7 +458,7 @@ abstract class AbstractCache
     private function remove(Decision $decision, ?int $bucketInt = null): array
     {
         $result = [self::DONE => 0, self::DEFER => 0];
-        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt) :
+        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
 
@@ -489,7 +472,7 @@ abstract class AbstractCache
             unset($cachedValues[$indexToRemove]);
             $cachedValues = $this->cleanCachedValues($cachedValues);
             if (!$cachedValues) {
-                $result[self::DONE] = (int) $this->adapter->deleteItem(base64_encode($cacheKey));
+                $result[self::DONE] = (int)$this->adapter->deleteItem(base64_encode($cacheKey));
 
                 return $result;
             }
@@ -518,7 +501,7 @@ abstract class AbstractCache
      */
     private function store(Decision $decision, ?int $bucketInt = null): array
     {
-        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt) :
+        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->adapter->getItem(base64_encode($cacheKey));
         $cachedValues = $item->isHit() ? $item->get() : [];

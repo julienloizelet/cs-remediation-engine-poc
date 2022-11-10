@@ -29,7 +29,7 @@ class Constants
     /** @var int The duration we keep a clean IP in cache */
     public const CACHE_EXPIRATION_FOR_CLEAN_IP = 60;
     /** @var string The CrowdSec Ip scope for decisions */
-    public const SCOPE_IP = 'Ip';
+    public const SCOPE_IP = 'ip';
     /** @var string The CrowdSec Range scope for decisions */
-    public const SCOPE_RANGE = 'Range';
+    public const SCOPE_RANGE = 'range';
 }
