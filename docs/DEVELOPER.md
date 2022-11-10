@@ -109,7 +109,7 @@ ddev composer update --working-dir ./my-own-modules/remediation-engine
 #### Unit test
 
 ```bash
-ddev php ./my-own-modules/remediation-engine/vendor/bin/phpunit  ./my-own-modules/remediation-engine/tests/Unit 
+ddev php ./my-own-modules/remediation-engine/vendor/bin/phpunit  ./my-own-modules/remediation-engine/tests/Unit --testdox
 ```
 
 #### Integration test

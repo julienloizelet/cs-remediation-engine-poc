@@ -16,7 +16,8 @@ $logger = new FileLog(['debug_mode' => true]);
 // Init Client
 $clientConfigs = [
     'machine_id_prefix' => 'remediationtest',
-    'scenarios' => ['crowdsecurity/http-sensitive-files'], ];
+    'scenarios' => ['crowdsecurity/http-sensitive-files']
+];
 $capiClient = new Watcher($clientConfigs, new FileStorage(), null, $logger);
 
 // Init PhpFile Cache storage

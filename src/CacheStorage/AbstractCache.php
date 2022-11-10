@@ -42,9 +42,9 @@ abstract class AbstractCache
     /** @var int Cache item content array value index */
     public const INDEX_VALUE = 0;
     /** @var string The cache key prefix for a IPV4 range bucket */
-    private const IPV4_BUCKET_KEY = 'RANGE_BUCKET_IPV4';
+    public const IPV4_BUCKET_KEY = 'RANGE_BUCKET_IPV4';
     /** @var int The size of ipv4 range cache bucket */
-    private const IPV4_BUCKET_SIZE = 256;
+    public const IPV4_BUCKET_SIZE = 256;
     /** @var string The cache tag for range bucket cache item */
     private const RANGE_BUCKET_TAG = 'RANGE_BUCKET';
     /** @var AdapterInterface */
@@ -91,6 +91,14 @@ abstract class AbstractCache
     public function commit(): bool
     {
         return $this->adapter->commit();
+    }
+
+    /**
+     * @return AdapterInterface
+     */
+    public function getAdapter(): AdapterInterface
+    {
+        return $this->adapter;
     }
 
     /**

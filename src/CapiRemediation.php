@@ -14,13 +14,12 @@ use Symfony\Component\Config\Definition\Processor;
 
 class CapiRemediation extends AbstractRemediation
 {
+    /** @var array The list of each known CAPI remediation, sorted by priority */
+    public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
     /**
      * @var Watcher
      */
     private $client;
-
-    /** @var array The list of each known CAPI remediation, sorted by priority */
-    public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
 
     public function __construct(
         array $configs,
@@ -47,6 +46,7 @@ class CapiRemediation extends AbstractRemediation
         $ipDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP, $ip);
         // Ask cache for Range scoped decision
         $rangeDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE, $ip);
+        // @TODO : Country scoped decision (need Geolocation)
 
         $allDecisions = array_merge(
             $ipDecisions ? $ipDecisions[0] : [],
@@ -68,16 +68,6 @@ class CapiRemediation extends AbstractRemediation
     }
 
     /**
-     * Process and validate input configurations.
-     */
-    private function configure(array $configs): void
-    {
-        $configuration = new CapiRemediationConfig();
-        $processor = new Processor();
-        $this->configs = $processor->processConfiguration($configuration, [$configs]);
-    }
-
-    /**
      * {@inheritdoc}
      *
      * @throws CacheException
@@ -86,25 +76,7 @@ class CapiRemediation extends AbstractRemediation
      */
     public function refreshDecisions(): array
     {
-        // $rawDecisions = $this->client->getStreamDecisions();
-        $rawDecisions = [
-             'deleted' => [
-                 ['duration' => '147h',
-                     'origin' => 'CAPI12',
-                     'scenario' => 'manual',
-                     'scope' => 'range',
-                     'type' => 'ban',
-                     'value' => '52.3.230.0/24', ],
-             ],
-             'new' => [
-                 ['duration' => '147h',
-                     'origin' => 'CAPI',
-                     'scenario' => 'manual',
-                     'scope' => 'range',
-                     'type' => 'ban',
-                     'value' => '52.3.230.0/24', ],
-             ],
-         ];
+        $rawDecisions = $this->client->getStreamDecisions();
         $newDecisions = $this->convertRawDecisionsToDecisions($rawDecisions[self::CS_NEW] ?? []);
         $deletedDecisions = $this->convertRawDecisionsToDecisions($rawDecisions[self::CS_DEL] ?? []);
 
@@ -112,5 +84,15 @@ class CapiRemediation extends AbstractRemediation
             self::CS_NEW => $this->storeDecisions($newDecisions),
             self::CS_DEL => $this->removeDecisions($deletedDecisions),
         ];
+    }
+
+    /**
+     * Process and validate input configurations.
+     */
+    private function configure(array $configs): void
+    {
+        $configuration = new CapiRemediationConfig();
+        $processor = new Processor();
+        $this->configs = $processor->processConfiguration($configuration, [$configs]);
     }
 }
