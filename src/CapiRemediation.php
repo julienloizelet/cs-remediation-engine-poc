@@ -46,7 +46,6 @@ class CapiRemediation extends AbstractRemediation
         $ipDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP, $ip);
         // Ask cache for Range scoped decision
         $rangeDecisions = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE, $ip);
-        // @TODO : Country scoped decision (need Geolocation)
 
         $allDecisions = array_merge(
             $ipDecisions ? $ipDecisions[0] : [],

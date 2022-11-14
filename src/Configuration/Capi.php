@@ -39,7 +39,7 @@ class Capi implements ConfigurationInterface
                 ->validate()
                 ->ifArray()
                 ->then(function (array $value) {
-                    return array_unique(array_values($value));
+                    return array_values(array_unique($value));
                 })
                 ->end()
                 ->scalarPrototype()->cannotBeEmpty()
@@ -64,7 +64,7 @@ class Capi implements ConfigurationInterface
             ->ifTrue(function (array $v) {
                 return !in_array($v['fallback_remediation'], $v['ordered_remediations']);
             })
-            ->thenInvalid('Fallback remediation must belong to ordered remediations')
+            ->thenInvalid('Fallback remediation must belong to ordered remediations.')
             ->end()
             ->validate()
             ->ifTrue(function (array $v) {

@@ -48,12 +48,6 @@ final class DecisionTest extends TestCase
 
 
 
-
-
-
-
-
-
     public function testConstruct()
     {
 
@@ -111,6 +105,74 @@ final class DecisionTest extends TestCase
                 'scope' => 'ip',
                 'value' => TestConstants::IP_V4,
                 'type' => 'bypass',
+                'priority' => 1,
+                'duration' => '147h',
+            ],
+            $decision->toArray(),
+            'Decision should be as expected'
+        );
+
+
+    }
+
+    public function testCustomOrderedRemediations()
+    {
+
+        $this->remediation
+            ->method('getConfig')
+            ->will(
+                $this->returnValueMap(
+                    [
+                        ['ordered_remediations', [], ['ban', 'captcha', 'bypass']],
+                        ['fallback_remediation', null, Constants::REMEDIATION_BYPASS]
+                    ]
+                )
+            );
+
+        // Test basic
+        $decision = new Decision($this->remediation, 'Ip', TestConstants::IP_V4, 'ban', 'Unit', '147h', '');
+
+        $this->assertEquals(
+            [
+                'identifier' => 'Unit-ban-ip-'. TestConstants::IP_V4,
+                'origin' => 'Unit',
+                'scope' => 'ip',
+                'value' => TestConstants::IP_V4,
+                'type' => 'ban',
+                'priority' => 0,
+                'duration' => '147h',
+            ],
+            $decision->toArray(),
+            'Decision should be as expected'
+        );
+
+        // Test fallback
+        $decision = new Decision($this->remediation, 'Ip', TestConstants::IP_V4, 'unknown', 'Unit', '147h', '');
+
+        $this->assertEquals(
+            [
+                'identifier' => 'Unit-bypass-ip-'. TestConstants::IP_V4,
+                'origin' => 'Unit',
+                'scope' => 'ip',
+                'value' => TestConstants::IP_V4,
+                'type' => 'bypass',
+                'priority' => 2,
+                'duration' => '147h',
+            ],
+            $decision->toArray(),
+            'Decision should be as expected'
+        );
+
+        // Test priority
+        $decision = new Decision($this->remediation, 'Ip', TestConstants::IP_V4, 'captcha', 'Unit', '147h', '');
+
+        $this->assertEquals(
+            [
+                'identifier' => 'Unit-captcha-ip-'. TestConstants::IP_V4,
+                'origin' => 'Unit',
+                'scope' => 'ip',
+                'value' => TestConstants::IP_V4,
+                'type' => 'captcha',
                 'priority' => 1,
                 'duration' => '147h',
             ],
