@@ -28,15 +28,6 @@ abstract class AbstractRemediation extends TestCase
             ->getMock();
     }
 
-
-    protected function getPhpfilesCacheMock(array $configs)
-    {
-        return $this->getMockBuilder('CrowdSec\RemediationEngine\CacheStorage\PhpFiles')
-            ->setConstructorArgs(['configs' => $configs])
-            ->onlyMethods(['retrieveDecisionsForIp', 'setStreamMode'])
-            ->getMock();
-    }
-
     protected function getCacheMock(string $type, array $configs)
     {
         switch ($type) {

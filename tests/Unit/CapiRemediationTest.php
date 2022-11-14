@@ -24,6 +24,7 @@ use CrowdSec\RemediationEngine\CapiRemediation;
 use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
 use CrowdSec\RemediationEngine\Constants;
 use CrowdSec\RemediationEngine\Tests\Constants as TestConstants;
+use CrowdSec\RemediationEngine\Tests\MockedData;
 use CrowdSec\RemediationEngine\Logger\FileLog;
 use org\bovigo\vfs\vfsStreamDirectory;
 
@@ -95,13 +96,12 @@ final class CapiRemediationTest extends AbstractRemediation
 
         $cachePhpfilesConfigs = ['fs_cache_path' => $this->root->url()];
         $this->phpFileStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs);
-        // @TODO getenv to set other dsn
         $cacheMemcachedConfigs = [
-            'memcached_dsn' => 'memcached://memcached:11211',
+            'memcached_dsn' => getenv('memcached_dsn') ?: 'memcached://memcached:11211',
         ];
         $this->memcachedStorage = $this->getCacheMock('MemcachedAdapter', $cacheMemcachedConfigs);
         $cacheRedisConfigs = [
-            'redis_dsn' => 'redis://redis:6379',
+            'redis_dsn' => getenv('redis_dsn') ?: 'redis://redis:6379',
         ];
         $this->redisStorage = $this->getCacheMock('RedisAdapter', $cacheRedisConfigs);
     }
@@ -246,13 +246,13 @@ final class CapiRemediationTest extends AbstractRemediation
         // Prepare next tests
         $this->watcher->method('getStreamDecisions')->will(
             $this->onConsecutiveCalls(
-                TestConstants::CAPI_DECISIONS['new_ip_v4'],          // Test 1 : retrieve a new IP decision (ban)
-                TestConstants::CAPI_DECISIONS['new_ip_v4'],          // Test 2 : retrieve same IP decision (ban)
-                TestConstants::CAPI_DECISIONS['deleted_ip_v4'],      // Test 3 : retrieve a deleted IP decision
-                TestConstants::CAPI_DECISIONS['new_ip_v4_range'],    // Test 4 : retrieve a new RANGE decision (ban)
-                TestConstants::CAPI_DECISIONS['delete_ip_v4_range'], // Test 5 : retrieve a deleted RANGE decision
-                TestConstants::CAPI_DECISIONS['ip_v4_multiple'],     // Test 6 : retrieve multiple RANGE and IP decision
-                TestConstants::CAPI_DECISIONS['ip_v4_multiple_bis']  // Test 7 : retrieve multiple new and delete
+                MockedData::CAPI_DECISIONS['new_ip_v4'],          // Test 1 : retrieve a new IP decision (ban)
+                MockedData::CAPI_DECISIONS['new_ip_v4'],          // Test 2 : retrieve same IP decision (ban)
+                MockedData::CAPI_DECISIONS['deleted_ip_v4'],      // Test 3 : retrieve a deleted IP decision
+                MockedData::CAPI_DECISIONS['new_ip_v4_range'],    // Test 4 : retrieve a new RANGE decision (ban)
+                MockedData::CAPI_DECISIONS['delete_ip_v4_range'], // Test 5 : retrieve a deleted RANGE decision
+                MockedData::CAPI_DECISIONS['ip_v4_multiple'],     // Test 6 : retrieve multiple RANGE and IP decision
+                MockedData::CAPI_DECISIONS['ip_v4_multiple_bis']  // Test 7 : retrieve multiple new and delete
             )
         );
         // Test 1

@@ -16,4 +16,128 @@ namespace CrowdSec\RemediationEngine\Tests;
  */
 class MockedData
 {
+    public const CAPI_DECISIONS = [
+        'new_ip_v4' => [
+            'new' => [
+                ['duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4_2],
+            ],
+            'deleted' => [],
+        ],
+        'deleted_ip_v4' => [
+            'deleted' => [
+                ['duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4_2],
+            ],
+            'new' => [],
+        ],
+        'new_ip_v4_range' => [
+            'new' => [
+                ['duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'range',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_V4_RANGE],
+            ],
+            'deleted' => [],
+        ],
+        'delete_ip_v4_range' => [
+            'deleted' => [
+                ['duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'range',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_V4_RANGE],
+            ],
+            'new' => [],
+        ],
+        'ip_v4_multiple' => [
+            'new' => [
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4
+                ],
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI2',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4
+                ],
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI3',
+                    'scenario' => 'manual',
+                    'scope' => 'range',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_V4_RANGE
+                ],
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI4',
+                    'scenario' => 'manual',
+                    'scope' => 'range',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4_2 . '/' . Constants::IP_V4_RANGE
+                ],
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI5',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4_2
+                ],
+
+            ],
+            'deleted' => [],
+        ],
+        'ip_v4_multiple_bis' => [
+            'deleted' => [
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI2',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4
+                ],
+
+            ],
+            'new' => [
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI5',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4_2
+                ],
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI6',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4_2
+                ],
+            ],
+        ]
+    ];
+
 }
