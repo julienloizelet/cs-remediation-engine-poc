@@ -67,8 +67,10 @@ abstract class AbstractCache
         $this->configs = $configs;
         $this->adapter = $adapter;
         if (!$logger) {
+            // @codeCoverageIgnoreStart
             $logger = new Logger('null');
             $logger->pushHandler(new NullHandler());
+            // @codeCoverageIgnoreEnd
         }
         $this->logger = $logger;
     }
@@ -99,6 +101,11 @@ abstract class AbstractCache
     public function getAdapter(): AdapterInterface
     {
         return $this->adapter;
+    }
+
+    public function saveDeferred(CacheItemInterface $item):bool
+    {
+        return $this->adapter->saveDeferred($item);
     }
 
     /**
@@ -227,6 +234,11 @@ abstract class AbstractCache
         return $cachedDecisions;
     }
 
+    /**
+     * @param bool $value
+     * @return void
+     * @codeCoverageIgnore
+     */
     public function setStreamMode(bool $value): void
     {
         $this->configs['stream_mode'] = $value;
@@ -266,8 +278,12 @@ abstract class AbstractCache
          */
         $re = '/(-?)(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)(?:\.\d+)?(m?)s)?/m';
         preg_match($re, $duration, $matches);
-        if (!\count($matches)) {
-            throw new CacheException('Unable to parse the following duration:' . $duration);
+        if (empty($matches[0])) {
+            $this->logger->error('', [
+                'type' => 'CACHE_DURATION_PARSE_ERROR',
+                'duration' => $duration,
+            ]);
+            return 0;
         }
         $seconds = 0;
         if (isset($matches[2])) {
@@ -276,12 +292,14 @@ abstract class AbstractCache
         if (isset($matches[3])) {
             $seconds += ((int)$matches[3]) * 60; // minutes
         }
+        $secondsPart = 0;
         if (isset($matches[4])) {
-            $seconds += ((int)$matches[4]); // seconds
+            $secondsPart += ((int)$matches[4]); // seconds
         }
         if (isset($matches[5]) && 'm' === $matches[5]) { // units in milliseconds
-            $seconds *= 0.001;
+            $secondsPart *= 0.001;
         }
+        $seconds += $secondsPart;
         if ('-' === $matches[1]) { // negative
             $seconds *= -1;
         }
@@ -359,6 +377,10 @@ abstract class AbstractCache
         return false === $result ? null : $result;
     }
 
+    /**
+     * @param array $itemsToCache
+     * @return int
+     */
     private function getMaxExpiration(array $itemsToCache): int
     {
         return max(array_column($itemsToCache, self::INDEX_EXP));
@@ -371,12 +393,16 @@ abstract class AbstractCache
     {
         $ipInt = ip2long($ip);
         if (false === $ipInt) {
+            // @codeCoverageIgnoreStart
             throw new CacheException("$ip is not a valid IpV4 address");
+            // @codeCoverageIgnoreEnd
         }
         try {
             $result = intdiv($ipInt, self::IPV4_BUCKET_SIZE);
+            // @codeCoverageIgnoreStart
         } catch (\ArithmeticError|\DivisionByZeroError $e) {
             throw new CacheException('Something went wrong during integer division: ' . $e->getMessage());
+            // @codeCoverageIgnoreEnd
         }
 
         return $result;
@@ -438,7 +464,7 @@ abstract class AbstractCache
         $rangeString = $decision->getValue();
         $range = Subnet::parseString($rangeString);
         if (null === $range) {
-            $this->logger->warning('', [
+            $this->logger->error('', [
                 'type' => 'INVALID_RANGE',
                 'decision' => $decision->toArray(),
             ]);
@@ -487,7 +513,7 @@ abstract class AbstractCache
             $tags = $this->getTags($decision, $bucketInt);
             $item = $this->updateCacheItem($item, $cachedValues, $tags);
             $result[self::DEFER] = 1;
-            if (!$this->adapter->saveDeferred($item)) {
+            if (!$this->saveDeferred($item)) {
                 $this->logger->warning('', [
                     'type' => 'CACHE_STORE_DEFERRED_FAILED_FOR_REMOVE_DECISION',
                     'decision' => $decision->toArray(),
@@ -526,7 +552,7 @@ abstract class AbstractCache
         $item = $this->updateCacheItem($item, $decisionsToCache, $this->getTags($decision, $bucketInt));
 
         $result = [self::DONE => 0, self::DEFER => 1];
-        if (!$this->adapter->saveDeferred($item)) {
+        if (!$this->saveDeferred($item)) {
             $this->logger->warning('', [
                 'type' => 'CACHE_STORE_DEFERRED_FAILED',
                 'decision' => $decision->toArray(),

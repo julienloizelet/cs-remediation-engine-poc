@@ -26,6 +26,17 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
+
+/**
+ * @covers \CrowdSec\RemediationEngine\Configuration\Capi::validate
+ * @covers \CrowdSec\RemediationEngine\Configuration\Capi::getConfigTreeBuilder
+ * @covers \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
+ * @covers \CrowdSec\RemediationEngine\Configuration\Cache\Redis::getConfigTreeBuilder
+ * @covers \CrowdSec\RemediationEngine\Configuration\Cache\Memcached::getConfigTreeBuilder
+ * @covers \CrowdSec\RemediationEngine\Configuration\Cache\PhpFiles::getConfigTreeBuilder
+ *
+ *
+ */
 final class ConfigurationTest extends TestCase
 {
 

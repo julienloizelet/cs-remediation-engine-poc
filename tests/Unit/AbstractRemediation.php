@@ -16,6 +16,7 @@ namespace CrowdSec\RemediationEngine\Tests\Unit;
  */
 
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 
 abstract class AbstractRemediation extends TestCase
 {
@@ -28,7 +29,12 @@ abstract class AbstractRemediation extends TestCase
             ->getMock();
     }
 
-    protected function getCacheMock(string $type, array $configs)
+    protected function getCacheMock(
+        string $type,
+        array $configs,
+        LoggerInterface $logger = null,
+        array $otherMethods = []
+    )
     {
         switch ($type) {
             case 'PhpFilesAdapter':
@@ -43,10 +49,10 @@ abstract class AbstractRemediation extends TestCase
             default:
                 throw new \Exception('Unknown $type:' . $type);
         }
-
+        $methods = array_merge(['retrieveDecisionsForIp', 'setStreamMode'], $otherMethods);
         return $this->getMockBuilder($class)
-            ->setConstructorArgs(['configs' => $configs])
-            ->onlyMethods(['retrieveDecisionsForIp', 'setStreamMode'])
+            ->setConstructorArgs(['configs' => $configs, 'logger' => $logger])
+            ->onlyMethods($methods)
             ->getMock();
     }
 

@@ -25,10 +25,43 @@ use CrowdSec\RemediationEngine\CacheStorage\AbstractCache;
 use CrowdSec\RemediationEngine\Constants;
 use CrowdSec\RemediationEngine\Tests\Constants as TestConstants;
 use CrowdSec\RemediationEngine\Tests\MockedData;
+use CrowdSec\RemediationEngine\Tests\PHPUnitUtil;
 use CrowdSec\RemediationEngine\Logger\FileLog;
 use org\bovigo\vfs\vfsStreamDirectory;
 
 /**
+ * @uses \CrowdSec\RemediationEngine\AbstractRemediation::__construct
+ * @uses \CrowdSec\RemediationEngine\AbstractRemediation::getConfig
+ * @uses \CrowdSec\RemediationEngine\AbstractRemediation::validateRawDecision
+ * @uses \CrowdSec\RemediationEngine\AbstractRemediation::convertRawDecision
+ * @uses \CrowdSec\RemediationEngine\AbstractRemediation::convertRawDecisionsToDecisions
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::__construct
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::cleanCachedValues
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getAdapter
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getConfig
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getMaxExpiration
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::parseDurationToSeconds
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::__construct
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::configure
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::setCustomErrorHandler
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::unsetCustomErrorHandler
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\PhpFiles::__construct
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\PhpFiles::configure
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Redis::__construct
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Redis::configure
+ * @uses \CrowdSec\RemediationEngine\CapiRemediation::configure
+ * @uses \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
+ * @uses \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
+ * @uses \CrowdSec\RemediationEngine\Configuration\Cache\Memcached::getConfigTreeBuilder
+ * @uses \CrowdSec\RemediationEngine\Configuration\Cache\PhpFiles::getConfigTreeBuilder
+ * @uses \CrowdSec\RemediationEngine\Configuration\Cache\Redis::getConfigTreeBuilder
+ * @uses \CrowdSec\RemediationEngine\Configuration\Capi::validate
+ * @uses \CrowdSec\RemediationEngine\Logger\FileLog::__construct
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::clear
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::commit
+ * @uses \CrowdSec\RemediationEngine\Decision::getOrigin
+ * @uses \CrowdSec\RemediationEngine\Decision::toArray
+ *
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::__construct
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::getIpRemediation
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::createInternalDecision
@@ -36,6 +69,34 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::sortDecisionsByRemediationPriority
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::refreshDecisions
  * @covers \CrowdSec\RemediationEngine\Configuration\Capi::getConfigTreeBuilder
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::removeDecisions
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::clear
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::commit
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::format
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::formatIpV4Range
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getCacheKey
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getCachedIndex
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getRangeIntForIp
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleRangeScoped
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::remove
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::removeDecision
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::store
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::storeDecision
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::updateCacheItem
+ * @covers \CrowdSec\RemediationEngine\Decision::__construct
+ * @covers \CrowdSec\RemediationEngine\Decision::getDuration
+ * @covers \CrowdSec\RemediationEngine\Decision::getIdentifier
+ * @covers \CrowdSec\RemediationEngine\Decision::getPriority
+ * @covers \CrowdSec\RemediationEngine\Decision::getScope
+ * @covers \CrowdSec\RemediationEngine\Decision::getType
+ * @covers \CrowdSec\RemediationEngine\Decision::getValue
+ * @covers \CrowdSec\RemediationEngine\Decision::handleIdentifier
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::comparePriorities
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::manageRange
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::saveDeferred
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleBadIpDuration
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getTags
+ *
  */
 final class CapiRemediationTest extends AbstractRemediation
 {
@@ -95,15 +156,15 @@ final class CapiRemediationTest extends AbstractRemediation
         $this->watcher = $this->getWatcherMock();
 
         $cachePhpfilesConfigs = ['fs_cache_path' => $this->root->url()];
-        $this->phpFileStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs);
+        $this->phpFileStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger);
         $cacheMemcachedConfigs = [
             'memcached_dsn' => getenv('memcached_dsn') ?: 'memcached://memcached:11211',
         ];
-        $this->memcachedStorage = $this->getCacheMock('MemcachedAdapter', $cacheMemcachedConfigs);
+        $this->memcachedStorage = $this->getCacheMock('MemcachedAdapter', $cacheMemcachedConfigs, $this->logger);
         $cacheRedisConfigs = [
             'redis_dsn' => getenv('redis_dsn') ?: 'redis://redis:6379',
         ];
-        $this->redisStorage = $this->getCacheMock('RedisAdapter', $cacheRedisConfigs);
+        $this->redisStorage = $this->getCacheMock('RedisAdapter', $cacheRedisConfigs, $this->logger);
     }
 
     protected function tearDown(): void
@@ -246,13 +307,16 @@ final class CapiRemediationTest extends AbstractRemediation
         // Prepare next tests
         $this->watcher->method('getStreamDecisions')->will(
             $this->onConsecutiveCalls(
-                MockedData::CAPI_DECISIONS['new_ip_v4'],          // Test 1 : retrieve a new IP decision (ban)
-                MockedData::CAPI_DECISIONS['new_ip_v4'],          // Test 2 : retrieve same IP decision (ban)
-                MockedData::CAPI_DECISIONS['deleted_ip_v4'],      // Test 3 : retrieve a deleted IP decision
-                MockedData::CAPI_DECISIONS['new_ip_v4_range'],    // Test 4 : retrieve a new RANGE decision (ban)
-                MockedData::CAPI_DECISIONS['delete_ip_v4_range'], // Test 5 : retrieve a deleted RANGE decision
+                MockedData::CAPI_DECISIONS['new_ip_v4'],          // Test 1 : new IP decision (ban)
+                MockedData::CAPI_DECISIONS['new_ip_v4'],          // Test 2 : same IP decision (ban)
+                MockedData::CAPI_DECISIONS['deleted_ip_v4'],      // Test 3 : deleted IP decision (existing one and not)
+                MockedData::CAPI_DECISIONS['new_ip_v4_range'],    // Test 4 : new RANGE decision (ban)
+                MockedData::CAPI_DECISIONS['delete_ip_v4_range'], // Test 5 : deleted RANGE decision
                 MockedData::CAPI_DECISIONS['ip_v4_multiple'],     // Test 6 : retrieve multiple RANGE and IP decision
-                MockedData::CAPI_DECISIONS['ip_v4_multiple_bis']  // Test 7 : retrieve multiple new and delete
+                MockedData::CAPI_DECISIONS['ip_v4_multiple_bis'],  // Test 7 : retrieve multiple new and delete
+                MockedData::CAPI_DECISIONS['ip_v4_remove_unknown'], // Test 8 : delete unknown scope
+                MockedData::CAPI_DECISIONS['ip_v4_store_unknown'], // Test 9 : store unknown scope
+                MockedData::CAPI_DECISIONS['new_ip_v6_range'] // Test 10 : store IP V6 range
             )
         );
         // Test 1
@@ -392,5 +456,117 @@ final class CapiRemediationTest extends AbstractRemediation
             count($cachedValue),
             'Should now have 2 cached remediation'
         );
+
+        // Test 8
+        $this->assertEquals(
+            false,
+            file_exists($this->root->url() . '/' . $this->prodFile),
+            'Prod File should not exist'
+        );
+        $result = $remediation->refreshDecisions();
+        $this->assertEquals(
+            ['new' => 0, 'deleted' => 0],
+            $result,
+            'Refresh count should be correct'
+        );
+        $this->assertEquals(
+            true,
+            file_exists($this->root->url() . '/' . $this->prodFile),
+            'Prod File should  exist'
+        );
+
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/.*300.*"type":"CACHE_REMOVE_NON_IMPLEMENTED_SCOPE.*CAPI-ban-do-not-know-delete-1.2.3.4"/',
+            file_get_contents($this->root->url() . '/' . $this->prodFile),
+            'Prod log content should be correct'
+        );
+        // Test 9
+        $result = $remediation->refreshDecisions();
+        $this->assertEquals(
+            ['new' => 0, 'deleted' => 0],
+            $result,
+            'Refresh count should be correct'
+        );
+
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/.*300.*"type":"CACHE_STORE_NON_IMPLEMENTED_SCOPE.*CAPI-ban-do-not-know-store-1.2.3.4"/',
+            file_get_contents($this->root->url() . '/' . $this->prodFile),
+            'Prod log content should be correct'
+        );
+        // Test 10
+        $result = $remediation->refreshDecisions();
+        $this->assertEquals(
+            ['new' => 0, 'deleted' => 0],
+            $result,
+            'Refresh count should be correct'
+        );
+
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/.*300.*"type":"IPV6_RANGE_NOT_IMPLEMENTED"/',
+            file_get_contents($this->root->url() . '/' . $this->prodFile),
+            'Prod log content should be correct'
+        );
+
+    }
+
+    public function testFailedDeferred()
+    {
+        // Test failed deferred
+        $this->watcher->method('getStreamDecisions')->will(
+            $this->onConsecutiveCalls(
+                MockedData::CAPI_DECISIONS['new_ip_v4_double'], // Test 1 : new IP decision (ban) (save ok)
+                MockedData::CAPI_DECISIONS['new_ip_v4_other'],  // Test 2 : new IP decision (ban) (failed deferred)
+                MockedData::CAPI_DECISIONS['deleted_ip_v4'] // Test 3 : deleted IP decision (failed deferred)
+            )
+        );
+        $cachePhpfilesConfigs = ['fs_cache_path' => $this->root->url()];
+        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger);
+        $remediationConfigs = [];
+        $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
+
+        $result = $remediation->refreshDecisions();
+        $this->assertEquals(
+            ['new' => 2, 'deleted' => 0],
+            $result,
+            'Refresh count should be correct for 2 news'
+        );
+
+        // Test 2
+        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, ['saveDeferred']);
+        $remediationConfigs = [];
+        $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
+
+        $this->cacheStorage->method('saveDeferred')->will(
+            $this->onConsecutiveCalls(
+                false
+            )
+        );
+        $result = $remediation->refreshDecisions();
+        $this->assertEquals(
+            ['new' => 0, 'deleted' => 0],
+            $result,
+            'Refresh count should be correct for failed deferred store'
+        );
+        // Test 3
+        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, ['saveDeferred']);
+        $remediationConfigs = [];
+        $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
+        $this->cacheStorage->method('saveDeferred')->will(
+            $this->onConsecutiveCalls(
+                false
+            )
+        );
+        $result = $remediation->refreshDecisions();
+        $this->assertEquals(
+            ['new' => 0, 'deleted' => 0],
+            $result,
+            'Refresh count should be correct for failed deferred remove'
+        );
+
+
+
     }
 }

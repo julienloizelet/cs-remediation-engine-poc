@@ -26,8 +26,10 @@ class Memcached extends AbstractCache
         $this->setCustomErrorHandler();
         try {
             $adapter = new MemcachedAdapter(MemcachedAdapter::createConnection($this->configs['memcached_dsn']));
+            // @codeCoverageIgnoreStart
         } catch (\Exception $e) {
             throw new CacheException('Error when creating Memcached cache adapter:' . $e->getMessage());
+            // @codeCoverageIgnoreEnd
         } finally {
             $this->unsetCustomErrorHandler();
         }
@@ -73,6 +75,7 @@ class Memcached extends AbstractCache
      * To catch this warning as a clean exception we have to temporarily change the error handler.
      *
      * @throws CacheException
+     * @codeCoverageIgnore
      */
     private function setCustomErrorHandler(): void
     {
@@ -85,6 +88,8 @@ class Memcached extends AbstractCache
 
     /**
      * When the selected cache adapter is MemcachedAdapter, revert to the previous error handler.
+     *
+     * @codeCoverageIgnore
      * */
     private function unsetCustomErrorHandler(): void
     {

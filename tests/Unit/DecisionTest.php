@@ -21,7 +21,19 @@ use CrowdSec\RemediationEngine\AbstractRemediation;
 use CrowdSec\RemediationEngine\Decision;
 use CrowdSec\RemediationEngine\Constants;
 use CrowdSec\RemediationEngine\Tests\Constants as TestConstants;
-
+/**
+ * @covers \CrowdSec\RemediationEngine\Decision::toArray
+ * @covers \CrowdSec\RemediationEngine\Decision::__construct
+ * @covers \CrowdSec\RemediationEngine\Decision::getDuration
+ * @covers \CrowdSec\RemediationEngine\Decision::getIdentifier
+ * @covers \CrowdSec\RemediationEngine\Decision::getOrigin
+ * @covers \CrowdSec\RemediationEngine\Decision::getPriority
+ * @covers \CrowdSec\RemediationEngine\Decision::getScope
+ * @covers \CrowdSec\RemediationEngine\Decision::getType
+ * @covers \CrowdSec\RemediationEngine\Decision::getValue
+ * @covers \CrowdSec\RemediationEngine\Decision::handleIdentifier
+ *
+ */
 final class DecisionTest extends TestCase
 {
 

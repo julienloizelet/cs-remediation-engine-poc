@@ -28,14 +28,50 @@ class MockedData
             ],
             'deleted' => [],
         ],
-        'deleted_ip_v4' => [
-            'deleted' => [
+        'new_ip_v4_other' => [
+            'new' => [
                 ['duration' => '147h',
                     'origin' => 'CAPI',
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
+                    'value' => Constants::IP_V4],
+            ],
+            'deleted' => [],
+        ],
+        'new_ip_v4_double' => [
+            'new' => [
+                ['duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'bypass',
                     'value' => Constants::IP_V4_2],
+                ['duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4_2]
+            ],
+            'deleted' => [],
+        ],
+        'deleted_ip_v4' => [
+            'deleted' => [
+                ['duration' => '147h',
+                    'origin' => 'CAPI34',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'captcha',
+                    'value' => Constants::IP_V4_2
+                ],
+                ['duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'ip',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4_2
+                ],
             ],
             'new' => [],
         ],
@@ -46,7 +82,18 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4 . '/' . Constants::IP_V4_RANGE],
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE],
+            ],
+            'deleted' => [],
+        ],
+        'new_ip_v6_range' => [
+            'new' => [
+                ['duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'range',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V6 . '/' . Constants::IP_RANGE],
             ],
             'deleted' => [],
         ],
@@ -57,7 +104,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4 . '/' . Constants::IP_V4_RANGE],
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE],
             ],
             'new' => [],
         ],
@@ -85,7 +132,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4 . '/' . Constants::IP_V4_RANGE
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE
                 ],
                 [
                     'duration' => '147h',
@@ -93,7 +140,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4_2 . '/' . Constants::IP_V4_RANGE
+                    'value' => Constants::IP_V4_2 . '/' . Constants::IP_RANGE
                 ],
                 [
                     'duration' => '147h',
@@ -137,6 +184,34 @@ class MockedData
                     'value' => Constants::IP_V4_2
                 ],
             ],
+        ],
+        'ip_v4_remove_unknown' => [
+            'deleted' => [
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'do-not-know-delete',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4
+                ],
+
+            ],
+            'new' => [],
+        ],
+        'ip_v4_store_unknown' => [
+            'new' => [
+                [
+                    'duration' => '147h',
+                    'origin' => 'CAPI',
+                    'scenario' => 'manual',
+                    'scope' => 'do-not-know-store',
+                    'type' => 'ban',
+                    'value' => Constants::IP_V4
+                ],
+
+            ],
+            'deleted' => [],
         ]
     ];
 
