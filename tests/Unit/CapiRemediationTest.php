@@ -30,11 +30,6 @@ use CrowdSec\RemediationEngine\Logger\FileLog;
 use org\bovigo\vfs\vfsStreamDirectory;
 
 /**
- * @uses \CrowdSec\RemediationEngine\AbstractRemediation::__construct
- * @uses \CrowdSec\RemediationEngine\AbstractRemediation::getConfig
- * @uses \CrowdSec\RemediationEngine\AbstractRemediation::validateRawDecision
- * @uses \CrowdSec\RemediationEngine\AbstractRemediation::convertRawDecision
- * @uses \CrowdSec\RemediationEngine\AbstractRemediation::convertRawDecisionsToDecisions
  * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::__construct
  * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::cleanCachedValues
  * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getAdapter
@@ -61,8 +56,10 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @uses \CrowdSec\RemediationEngine\Decision::getOrigin
  * @uses \CrowdSec\RemediationEngine\Decision::toArray
  *
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::__construct
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::__construct
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::configure
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::getConfig
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::getIpRemediation
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::createInternalDecision
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::storeDecisions
@@ -98,6 +95,12 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getTags
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getItem
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::retrieveDecisionsForIp
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::convertRawDecision
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::convertRawDecisionsToDecisions
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::validateRawDecision
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::clearCache
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::pruneCache
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::prune
  *
  */
 final class CapiRemediationTest extends AbstractRemediation
@@ -205,6 +208,30 @@ final class CapiRemediationTest extends AbstractRemediation
     /**
      * @dataProvider cacheTypeProvider
      */
+    public function testCacheActions($cacheType){
+        $this->setCache($cacheType);
+        $remediationConfigs = [];
+        $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, null);
+        $result = $remediation->clearCache();
+        $this->assertEquals(
+            true,
+            $result,
+            'Should clear cache'
+        );
+
+        if ($cacheType === 'PhpFilesAdapter') {
+            $result = $remediation->pruneCache();
+            $this->assertEquals(
+                true,
+                $result,
+                'Should prune cache'
+            );
+        }
+    }
+
+    /**
+     * @dataProvider cacheTypeProvider
+     */
     public function testGetIpRemediation($cacheType)
     {
         $this->setCache($cacheType);
@@ -215,7 +242,8 @@ final class CapiRemediationTest extends AbstractRemediation
             ->method('setStreamMode')
             ->with(true);
 
-        $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
+        // Test with null logger
+        $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, null);
         // Test default configs
         $this->assertEquals(
             Constants::REMEDIATION_BYPASS,
@@ -571,5 +599,140 @@ final class CapiRemediationTest extends AbstractRemediation
             $result,
             'Refresh count should be correct for failed deferred remove'
         );
+    }
+
+    public function testPrivateOrProtectedMethods()
+    {
+
+        $cachePhpfilesConfigs = ['fs_cache_path' => $this->root->url()];
+        $mockedMethods = [];
+        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, $mockedMethods);
+        $remediationConfigs = [];
+        $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
+        // convertRawDecisionsToDecisions
+        // Test 1 : ok
+        $rawDecisions = [
+            [
+                'scope' => 'IP',
+                'value' => '1.2.3.4',
+                'type' => 'ban',
+                'origin' => 'unit',
+                'duration' => '147h',
+                'scenario' => ''
+            ]
+        ];
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'convertRawDecisionsToDecisions',
+            [$rawDecisions]
+        );
+
+        $this->assertCount(
+            1,
+            $result,
+            'Should return array'
+        );
+
+        $decision = $result[0];
+        $this->assertEquals(
+            'ban',
+            $decision->getType(),
+            'Should have created a correct decision'
+        );
+        $this->assertEquals(
+            'ip',
+            $decision->getScope(),
+            'Should have created a correct decision'
+        );
+        // Test 2: bad raw decision
+        $rawDecisions = [
+            [
+                'value' => '1.2.3.4',
+                'origin' => 'unit',
+                'duration' => '147h',
+            ]
+        ];
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'convertRawDecisionsToDecisions',
+            [$rawDecisions]
+        );
+        $this->assertCount(
+            0,
+            $result,
+            'Should return empty array'
+        );
+
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/.*300.*"type":"RAW_DECISION_NOT_AS_EXPECTED"/',
+            file_get_contents($this->root->url() . '/' . $this->prodFile),
+            'Prod log content should be correct'
+        );
+
+        // comparePriorities
+        $a = [
+            'ban',
+            1668577960,
+            'CAPI-ban-range-52.3.230.0/24',
+            0
+        ];
+
+        $b = [
+            'ban',
+            1668577960,
+            'CAPI-ban-range-52.3.230.0/24',
+            0
+        ];
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'comparePriorities',
+            [$a, $b]
+        );
+
+        $this->assertEquals(
+            0,
+            $result,
+            'Should return 0 if same priority'
+        );
+
+        $a = [
+            'ban',
+            1668577960,
+            'CAPI-ban-range-52.3.230.0/24',
+            0
+        ];
+
+        $b = [
+            'bypass',
+            1668577960,
+            'CAPI-ban-range-52.3.230.0/24',
+            1
+        ];
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'comparePriorities',
+            [$a, $b]
+        );
+
+        $this->assertEquals(
+            -1,
+            $result,
+            'Should return -1'
+        );
+
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'comparePriorities',
+            [$b, $a]
+        );
+
+        $this->assertEquals(
+            1,
+            $result,
+            'Should return 1'
+        );
+
+
     }
 }

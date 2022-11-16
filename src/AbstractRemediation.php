@@ -127,14 +127,13 @@ abstract class AbstractRemediation
         return $doneCount + ($this->cacheStorage->commit() ? $deferCount : 0);
     }
 
-    /**
-     * @throws RemediationException
-     */
     protected function convertRawDecisionsToDecisions(array $rawDecisions): array
     {
         $decisions = [];
         foreach ($rawDecisions as $rawDecision) {
-            $decisions[] = $this->convertRawDecision($rawDecision);
+            if ($this->validateRawDecision($rawDecision)) {
+                $decisions[] = $this->convertRawDecision($rawDecision);
+            }
         }
 
         return $decisions;
@@ -144,7 +143,8 @@ abstract class AbstractRemediation
         string $scope,
         string $value,
         string $type = Constants::REMEDIATION_BYPASS
-    ): Decision {
+    ): Decision
+    {
         return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
     }
 
@@ -179,13 +179,8 @@ abstract class AbstractRemediation
         return ($a < $b) ? -1 : 1;
     }
 
-    /**
-     * @throws RemediationException
-     */
     private function convertRawDecision(array $rawDecision): Decision
     {
-        $this->validateRawDecision($rawDecision);
-
         return new Decision(
             $this,
             $rawDecision['scope'],
@@ -198,10 +193,7 @@ abstract class AbstractRemediation
         );
     }
 
-    /**
-     * @throws RemediationException
-     */
-    private function validateRawDecision(array $rawDecision): void
+    private function validateRawDecision(array $rawDecision): bool
     {
         if (
             isset(
@@ -213,9 +205,14 @@ abstract class AbstractRemediation
                 $rawDecision['scenario']
             )
         ) {
-            return;
+            return true;
         }
 
-        throw new RemediationException('Raw decision is not as expected: ' . json_encode($rawDecision));
+        $this->logger->warning('', [
+            'type' => 'RAW_DECISION_NOT_AS_EXPECTED',
+            'raw_decision' => json_encode($rawDecision),
+        ]);
+
+        return false;
     }
 }
