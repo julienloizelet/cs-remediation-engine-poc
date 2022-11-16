@@ -109,6 +109,14 @@ abstract class AbstractCache
     }
 
     /**
+     * @throws InvalidArgumentException
+     */
+    public function getItem(string $cacheKey):CacheItemInterface
+    {
+        return $this->adapter->getItem(base64_encode($cacheKey));
+    }
+
+    /**
      * Cache key convention.
      *
      * @throws CacheException
@@ -200,7 +208,7 @@ abstract class AbstractCache
         switch ($scope) {
             case Constants::SCOPE_IP:
                 $cacheKey = $this->getCacheKey($scope, $ip);
-                $item = $this->adapter->getItem(base64_encode($cacheKey));
+                $item = $this->getItem($cacheKey);
                 if ($item->isHit()) {
                     $cachedDecisions[] = $item->get();
                 }
@@ -208,7 +216,7 @@ abstract class AbstractCache
             case Constants::SCOPE_RANGE:
                 $bucketInt = $this->getRangeIntForIp($ip);
                 $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt);
-                $bucketItem = $this->adapter->getItem(base64_encode($bucketCacheKey));
+                $bucketItem = $this->getItem($bucketCacheKey);
                 $cachedBuckets = $bucketItem->isHit() ? $bucketItem->get() : [];
                 foreach ($cachedBuckets as $cachedBucket) {
                     $rangeString = $cachedBucket[self::INDEX_VALUE];
@@ -216,7 +224,7 @@ abstract class AbstractCache
                     $range = Factory::parseRangeString($rangeString);
                     if ($address && $range && $range->contains($address)) {
                         $cacheKey = $this->getCacheKey(Constants::SCOPE_RANGE, $rangeString);
-                        $item = $this->adapter->getItem(base64_encode($cacheKey));
+                        $item = $this->getItem($cacheKey);
                         if ($item->isHit()) {
                             $cachedDecisions[] = $item->get();
                         }
@@ -494,7 +502,7 @@ abstract class AbstractCache
         $result = [self::DONE => 0, self::DEFER => 0];
         $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
-        $item = $this->adapter->getItem(base64_encode($cacheKey));
+        $item = $this->getItem($cacheKey);
 
         if ($item->isHit()) {
             $cachedValues = $item->get();
@@ -537,7 +545,7 @@ abstract class AbstractCache
     {
         $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
-        $item = $this->adapter->getItem(base64_encode($cacheKey));
+        $item = $this->getItem($cacheKey);
         $cachedValues = $item->isHit() ? $item->get() : [];
         $indexToStore = $this->getCachedIndex($decision->getIdentifier(), $cachedValues);
         if (null !== $indexToStore) {

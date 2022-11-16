@@ -33,7 +33,7 @@ abstract class AbstractRemediation extends TestCase
         string $type,
         array $configs,
         LoggerInterface $logger = null,
-        array $otherMethods = []
+        array $methods = []
     )
     {
         switch ($type) {
@@ -49,7 +49,6 @@ abstract class AbstractRemediation extends TestCase
             default:
                 throw new \Exception('Unknown $type:' . $type);
         }
-        $methods = array_merge(['retrieveDecisionsForIp', 'setStreamMode'], $otherMethods);
         return $this->getMockBuilder($class)
             ->setConstructorArgs(['configs' => $configs, 'logger' => $logger])
             ->onlyMethods($methods)

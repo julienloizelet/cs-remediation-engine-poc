@@ -49,7 +49,6 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @uses \CrowdSec\RemediationEngine\CacheStorage\PhpFiles::configure
  * @uses \CrowdSec\RemediationEngine\CacheStorage\Redis::__construct
  * @uses \CrowdSec\RemediationEngine\CacheStorage\Redis::configure
- * @uses \CrowdSec\RemediationEngine\CapiRemediation::configure
  * @uses \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
  * @uses \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
  * @uses \CrowdSec\RemediationEngine\Configuration\Cache\Memcached::getConfigTreeBuilder
@@ -63,6 +62,7 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @uses \CrowdSec\RemediationEngine\Decision::toArray
  *
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::__construct
+ * @covers \CrowdSec\RemediationEngine\CapiRemediation::configure
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::getIpRemediation
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::createInternalDecision
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::storeDecisions
@@ -96,6 +96,8 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::saveDeferred
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleBadIpDuration
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getTags
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getItem
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::retrieveDecisionsForIp
  *
  */
 final class CapiRemediationTest extends AbstractRemediation
@@ -156,15 +158,16 @@ final class CapiRemediationTest extends AbstractRemediation
         $this->watcher = $this->getWatcherMock();
 
         $cachePhpfilesConfigs = ['fs_cache_path' => $this->root->url()];
-        $this->phpFileStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger);
+        $mockedMethods = ['retrieveDecisionsForIp', 'setStreamMode'];
+        $this->phpFileStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, $mockedMethods);
         $cacheMemcachedConfigs = [
             'memcached_dsn' => getenv('memcached_dsn') ?: 'memcached://memcached:11211',
         ];
-        $this->memcachedStorage = $this->getCacheMock('MemcachedAdapter', $cacheMemcachedConfigs, $this->logger);
+        $this->memcachedStorage = $this->getCacheMock('MemcachedAdapter', $cacheMemcachedConfigs, $this->logger, $mockedMethods);
         $cacheRedisConfigs = [
             'redis_dsn' => getenv('redis_dsn') ?: 'redis://redis:6379',
         ];
-        $this->redisStorage = $this->getCacheMock('RedisAdapter', $cacheRedisConfigs, $this->logger);
+        $this->redisStorage = $this->getCacheMock('RedisAdapter', $cacheRedisConfigs, $this->logger, $mockedMethods);
     }
 
     protected function tearDown(): void
@@ -523,7 +526,8 @@ final class CapiRemediationTest extends AbstractRemediation
             )
         );
         $cachePhpfilesConfigs = ['fs_cache_path' => $this->root->url()];
-        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger);
+        $mockedMethods = [];
+        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, $mockedMethods);
         $remediationConfigs = [];
         $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
 
@@ -535,7 +539,8 @@ final class CapiRemediationTest extends AbstractRemediation
         );
 
         // Test 2
-        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, ['saveDeferred']);
+        $mockedMethods = ['saveDeferred'];
+        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, $mockedMethods);
         $remediationConfigs = [];
         $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
 
@@ -551,7 +556,8 @@ final class CapiRemediationTest extends AbstractRemediation
             'Refresh count should be correct for failed deferred store'
         );
         // Test 3
-        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, ['saveDeferred']);
+        $mockedMethods = ['saveDeferred'];
+        $this->cacheStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, $mockedMethods);
         $remediationConfigs = [];
         $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
         $this->cacheStorage->method('saveDeferred')->will(
@@ -565,8 +571,5 @@ final class CapiRemediationTest extends AbstractRemediation
             $result,
             'Refresh count should be correct for failed deferred remove'
         );
-
-
-
     }
 }

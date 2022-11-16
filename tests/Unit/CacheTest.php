@@ -56,6 +56,21 @@ use PHPUnit\Framework\TestCase;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::manageRange
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getMaxExpiration
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::cleanCachedValues
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::format
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getCachedIndex
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getItem
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getTags
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleBadIpDuration
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::retrieveDecisionsForIp
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::saveDeferred
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::store
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::storeDecision
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::updateCacheItem
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::remove
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::removeDecision
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::formatIpV4Range
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getRangeIntForIp
+ * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleRangeScoped
  *
  *
  */
@@ -99,6 +114,11 @@ final class CacheTest extends TestCase
             'redis_dsn' => getenv('redis_dsn') ?: 'redis://redis:6379',
         ];
         $this->redisStorage = new Redis($cacheRedisConfigs, $this->logger);
+    }
+
+    protected function tearDown(): void
+    {
+        $this->cacheStorage->clear();
     }
 
     public function cacheTypeProvider(): array
@@ -443,9 +463,150 @@ final class CacheTest extends TestCase
             $result,
             'Should return correct maximum'
         );
+    }
 
 
+    public function testStoreAndRemoveAndRetrieveDecisionsForIpScope(){
 
+        $this->setCache('PhpFilesAdapter');
+
+        $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getValue', 'getType', 'getDuration', 'getScope', 'getIdentifier', 'getPriority'])
+            ->getMock();
+        $decision->method('getValue')->will(
+            $this->returnValue(
+                TestConstants::IP_V4
+            )
+        );
+        $decision->method('getType')->will(
+            $this->returnValue(
+                Constants::REMEDIATION_BAN
+            )
+        );
+        $decision->method('getDuration')->will(
+            $this->returnValue(
+                "147h"
+            )
+        );
+        $decision->method('getScope')->will(
+            $this->returnValue(
+                Constants::SCOPE_IP
+            )
+        );
+        $decision->method('getIdentifier')->will(
+            $this->returnValue(
+                'testip'
+            )
+        );
+        $decision->method('getPriority')->will(
+            $this->returnValue(
+                0
+            )
+        );
+        // Test 1 : retrieve stored IP
+        $this->cacheStorage->storeDecision($decision);
+
+        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP,  TestConstants::IP_V4);
+        $this->assertCount(
+            1,
+            $result[0],
+            'Should get stored decisions'
+        );
+        $this->assertEquals(
+            Constants::REMEDIATION_BAN,
+            $result[0][0][0],
+            'Should get stored decisions'
+        );
+
+        // Test 2 : retrieve unstored IP
+        $this->cacheStorage->removeDecision($decision);
+        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP,  TestConstants::IP_V4);
+        $this->assertCount(
+            0,
+            $result,
+            'Should get unstored decisions'
+        );
+    }
+
+    public function testStoreAndRemoveAndRetrieveDecisionsForRangeScope(){
+
+        $this->setCache('PhpFilesAdapter');
+
+        $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getValue', 'getType', 'getDuration', 'getScope', 'getIdentifier', 'getPriority'])
+            ->getMock();
+        $decision->method('getValue')->will(
+            $this->returnValue(
+                TestConstants::IP_V4 . '/' . TestConstants::IP_RANGE
+            )
+        );
+        $decision->method('getType')->will(
+            $this->returnValue(
+                Constants::REMEDIATION_BAN
+            )
+        );
+        $decision->method('getDuration')->will(
+            $this->returnValue(
+                "147h"
+            )
+        );
+        $decision->method('getScope')->will(
+            $this->returnValue(
+                Constants::SCOPE_RANGE
+            )
+        );
+        $decision->method('getIdentifier')->will(
+            $this->returnValue(
+                'testrange'
+            )
+        );
+        $decision->method('getPriority')->will(
+            $this->returnValue(
+                0
+            )
+        );
+        // Test 1 : retrieve stored Range
+        $this->cacheStorage->storeDecision($decision);
+
+        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE,  TestConstants::IP_V4);
+        $this->assertCount(
+            1,
+            $result[0],
+            'Should get stored decisions'
+        );
+        $this->assertEquals(
+            Constants::REMEDIATION_BAN,
+            $result[0][0][0],
+            'Should get stored decisions'
+        );
+
+        // Test 2 : retrieve unstored Range
+        $this->cacheStorage->removeDecision($decision);
+        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE,  TestConstants::IP_V4);
+        $this->assertCount(
+            0,
+            $result,
+            'Should get unstored decisions'
+        );
+    }
+
+    public function testRetrieveUnknownScope(){
+
+        $this->setCache('PhpFilesAdapter');
+        $result = $this->cacheStorage->retrieveDecisionsForIp('UNDEFINED',  TestConstants::IP_V4);
+        $this->assertCount(
+            0,
+            $result,
+            'Should return empty array'
+        );
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/.*300.*"type":"CACHE_RETRIEVE_FOR_IP_NON_IMPLEMENTED_SCOPE"/',
+            file_get_contents($this->root->url() . '/' . $this->prodFile),
+            'Prod log content should be correct'
+        );
 
     }
 }
