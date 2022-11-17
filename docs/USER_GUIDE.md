@@ -41,7 +41,7 @@ This kind of action is called a remediation and can be:
   - Retrieve and cache decisions from CAPI
     - Handle IP scoped decisions for Ipv4 and IPv6
     - Handle Range scoped decisions for IPv4
-  - Determine remediation for a given IP using the cached decisions.
+  - Determine remediation for a given IP using the cached decisions and customizable remediation priorities.
   
 
 - Overridable cache handler (built-in support for `Redis`, `Memcached` and `PhpFiles` caches)
@@ -133,9 +133,7 @@ $remediationEngine->getIpRemediation($ip);
 ```
 
 This method will ask the `CacheStorage` to know if there are any decisions matching the IP in cache. If there is no 
-cached decision, a `bypass` will be return. If there are one or more decisions, the decision type with the highest priority 
-will be return. By default, remediation priority rule is just `ban > bypass` but it can be fully configured using 
-the `$remediationConfigs` parameter.
+cached decision, a `bypass` will be returned. If there are one or more decisions, the decision type with the highest priority will be returned.
 
 
 ##### Clear cache
@@ -193,14 +191,12 @@ $configs = [
 ];
 ```
 
-The `fallback_remediation` setting will be used to determine which remediation to use in case a decision contain a 
-remediation that does not belong to the `ordered_remediations` setting.
+The `fallback_remediation` setting will be used to determine which remediation to use in case a decision has a 
+type that does not belong to the `ordered_remediations` setting.
 
 This setting is not required. If you don't set any value, `'bypass'` will be used by default.
 
 If you set some value, be aware to include this value in the `ordered_remediations` setting too.
 
-In the example above, if a retrieved decision contains a `mfa` remediation, the `ban` fallback will be use instead.
-
-
+In the example above, if a retrieved decision has a `mfa` type, the `ban` fallback will be use instead.
 
