@@ -16,6 +16,10 @@ on:
         type: boolean
         description: Prerelease
         default: false
+      first-release:
+        type: boolean
+        description: First release
+        default: false
 
 jobs:
   prepare-release:
@@ -68,6 +72,7 @@ jobs:
           fi
           
           # Check top [_Compare with previous release_](GITHUB_URL/compare/vLAST_TAG...vVERSION_NUMBER) in CHANGELOG.md
+          if [[ ${{ github.event.inputs.first-release }} != "true" ]]
           COMPARISON=$(grep -oP "\/compare\/\K(.*)$" CHANGELOG.md | head -1)
           LAST_TAG=$(curl -Ls -o /dev/null -w %{url_effective} $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/latest | grep -oP "\/tag\/\K(.*)$")
           if [[ $COMPARISON == "$LAST_TAG...v${{ env.VERSION_NUMBER }})" ]]
@@ -78,6 +83,7 @@ jobs:
             echo $COMPARISON
             echo "$LAST_TAG...v${{ env.VERSION_NUMBER }})"
             exit 1
+          fi
           fi
 
       - name: Create Tag ${{ github.event.inputs.tag_name }}
