@@ -67,10 +67,8 @@ abstract class AbstractCache
         $this->configs = $configs;
         $this->adapter = $adapter;
         if (!$logger) {
-            // @codeCoverageIgnoreStart
             $logger = new Logger('null');
             $logger->pushHandler(new NullHandler());
-            // @codeCoverageIgnoreEnd
         }
         $this->logger = $logger;
     }

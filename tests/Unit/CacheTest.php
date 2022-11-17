@@ -196,7 +196,11 @@ final class CacheTest extends TestCase
 
     public function testCacheKey()
     {
+        // Test also null logger
+        $cachePhpfilesConfigs = ['fs_cache_path' => $this->root->url()];
+        $this->phpFileStorage = new PhpFiles($cachePhpfilesConfigs);
         $this->setCache('PhpFilesAdapter');
+
 
         $cacheKey = $this->cacheStorage->getCacheKey('ip', '1.2.3.4');
 
