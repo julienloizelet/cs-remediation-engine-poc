@@ -6,6 +6,21 @@
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Description](#description)
+- [Features](#features)
+- [Quick start](#quick-start)
+  - [Installation](#installation)
+  - [CapiRemediation instantiation](#capiremediation-instantiation)
+    - [CapiRemediation features](#capiremediation-features)
+      - [Retrieve fresh decisions from CAPI](#retrieve-fresh-decisions-from-capi)
+      - [Get remediation for an IP](#get-remediation-for-an-ip)
+      - [Clear cache](#clear-cache)
+      - [Prune cache](#prune-cache)
+- [Remediation engine configurations](#remediation-engine-configurations)
+  - [Remediation priorities](#remediation-priorities)
+  - [Remediation fallback](#remediation-fallback)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
