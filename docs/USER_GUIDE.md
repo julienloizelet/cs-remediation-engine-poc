@@ -150,7 +150,7 @@ The first parameter `$configs` of the CapiRemediation constructor can be used to
 ```php
 $configs = [
         ... 
-        'ordered_remediations' => ['ban', 'captcha', 'bypass']
+        'ordered_remediations' => ['ban', 'captcha']
         ...
 ];
 ```
@@ -159,9 +159,11 @@ The `ordered_remediations` setting accepts an array of remediations ordered by p
 
 If there are more than one decision for an IP, remediation with the highest priority will be return.
 
-This setting is not required. If you don't set any value, `['ban', 'bypass']` will be used by default.
+The specific remediation `bypass` will always be considered as the lowest priority (there is no need to specify it 
+in this config).
 
-If you set some custom array, be aware to include `bypass` as this specific remediation is mandatory.
+This setting is not required. If you don't set any value, `['ban']` will be used by default.
+
 
 In the example above, priorities can be summarized as `ban > captcha > bypass`.
 

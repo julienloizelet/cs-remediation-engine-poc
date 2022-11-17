@@ -15,7 +15,7 @@ use Symfony\Component\Config\Definition\Processor;
 class CapiRemediation extends AbstractRemediation
 {
     /** @var array The list of each known CAPI remediation, sorted by priority */
-    public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN, Constants::REMEDIATION_BYPASS];
+    public const ORDERED_REMEDIATIONS = [Constants::REMEDIATION_BAN];
     /**
      * @var Watcher
      */
@@ -54,7 +54,7 @@ class CapiRemediation extends AbstractRemediation
 
         if (!$allDecisions) {
             // Store a bypass remediation if no cached decision found
-            $decision = $this->createInternalDecision(Constants::SCOPE_IP, $ip);
+            $decision = $this->createBypassDecision(Constants::SCOPE_IP, $ip);
             $this->storeDecisions([$decision]);
 
             return Constants::REMEDIATION_BYPASS;

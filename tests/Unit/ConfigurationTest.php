@@ -49,13 +49,36 @@ final class ConfigurationTest extends TestCase
         $this->assertEquals(
             [
                 'fallback_remediation' => 'bypass',
-                'ordered_remediations' => CapiRemediation::ORDERED_REMEDIATIONS,
+                'ordered_remediations' => array_merge(
+                    CapiRemediation::ORDERED_REMEDIATIONS, [Constants::REMEDIATION_BYPASS]
+                ),
             ],
             $result,
             'Should set default config'
         );
+        // Test bypass is always with the lowest priority (i.e. always last element)
+        $configs = ['ordered_remediations' => ['rem1', 'rem2']];
+        $result = $processor->processConfiguration($configuration, [$configs]);
+        $this->assertEquals(
+            [
+                'fallback_remediation' => 'bypass',
+                'ordered_remediations' => ['rem1', 'rem2', 'bypass'],
+            ],
+            $result,
+            'Should add bypass with the lowest priority'
+        );
+        $configs = ['ordered_remediations' => ['rem1', 'bypass', 'rem2', 'rem3', 'bypass', 'rem4']];
+        $result = $processor->processConfiguration($configuration, [$configs]);
+        $this->assertEquals(
+            [
+                'fallback_remediation' => 'bypass',
+                'ordered_remediations' => ['rem1', 'rem2', 'rem3', 'rem4','bypass'],
+            ],
+            $result,
+            'Should add bypass with the lowest priority'
+        );
         // Test array unique
-        $configs = ['ordered_remediations' => ['ban', 'test' => 'ban', 'captcha', 'bypass']];
+        $configs = ['ordered_remediations' => ['ban', 'test' => 'ban', 'captcha']];
         $result = $processor->processConfiguration($configuration, [$configs]);
         $this->assertEquals(
             [
@@ -65,24 +88,9 @@ final class ConfigurationTest extends TestCase
             $result,
             'Should normalize config'
         );
-        // Test missing bypass
-        $error = '';
-        $configs = ['ordered_remediations' => ['ban', 'captcha'], 'fallback_remediation' => 'captcha'];
-        try {
-            $processor->processConfiguration($configuration, [$configs]);
-        } catch (InvalidConfigurationException $e) {
-            $error = $e->getMessage();
-        }
-
-        PHPUnitUtil::assertRegExp(
-            $this,
-            '/Bypass remediation must belong to ordered remediations./',
-            $error,
-            'Should throw error if bypass is missing'
-        );
         // Test fallback is not in ordered remediations
         $error = '';
-        $configs = ['ordered_remediations' => ['ban', 'captcha', 'bypass'], 'fallback_remediation' => 'm2a'];
+        $configs = ['ordered_remediations' => ['ban', 'captcha'], 'fallback_remediation' => 'm2a'];
         try {
             $processor->processConfiguration($configuration, [$configs]);
         } catch (InvalidConfigurationException $e) {
@@ -94,6 +102,21 @@ final class ConfigurationTest extends TestCase
             '/Fallback remediation must belong to ordered remediations./',
             $error,
             'Should throw error if fallback does not belong to ordered remediations'
+        );
+
+        // Test fallback is not in ordered remediations but is bypass
+        $error = '';
+        $configs = ['ordered_remediations' => ['ban', 'captcha'], 'fallback_remediation' => 'bypass'];
+        try {
+            $processor->processConfiguration($configuration, [$configs]);
+        } catch (InvalidConfigurationException $e) {
+            $error = $e->getMessage();
+        }
+
+        $this->assertEquals(
+            '',
+            $error,
+            'Should normalize config'
         );
     }
 

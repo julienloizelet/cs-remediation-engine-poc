@@ -139,11 +139,8 @@ abstract class AbstractRemediation
         return $decisions;
     }
 
-    protected function createInternalDecision(
-        string $scope,
-        string $value,
-        string $type = Constants::REMEDIATION_BYPASS
-    ): Decision {
+    protected function createInternalDecision(string $scope, string $value, string $type): Decision
+    {
         return new Decision(
             $scope,
             $value,
@@ -155,14 +152,19 @@ abstract class AbstractRemediation
         );
     }
 
+    protected function createBypassDecision(string $scope, string $value):Decision
+    {
+        return $this->createInternalDecision($scope, $value, Constants::REMEDIATION_BYPASS);
+    }
+
     /**
      * Sort the decision array of a cache item, by remediation priorities.
      */
     protected function sortDecisionsByRemediationPriority(array $decisions): array
     {
         // Add priorities
-        $orderedRemediations = $this->getConfig('ordered_remediations', CapiRemediation::ORDERED_REMEDIATIONS);
-        $fallback = $this->getConfig('fallback_remediation', Constants::REMEDIATION_BYPASS);
+        $orderedRemediations = $this->getConfig('ordered_remediations');
+        $fallback = $this->getConfig('fallback_remediation');
         $decisionsWithPriority = [];
         foreach ($decisions as $decision) {
             $priority = array_search($decision[AbstractCache::INDEX_VALUE], $orderedRemediations);

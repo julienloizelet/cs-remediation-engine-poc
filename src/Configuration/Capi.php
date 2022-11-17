@@ -27,24 +27,31 @@ class Capi implements ConfigurationInterface
      */
     public function getConfigTreeBuilder(): TreeBuilder
     {
-        $defaultOrderedRemediations = CapiRemediation::ORDERED_REMEDIATIONS;
         $treeBuilder = new TreeBuilder('config');
         /** @var ArrayNodeDefinition $rootNode */
         $rootNode = $treeBuilder->getRootNode();
         $rootNode->children()
             ->scalarNode('fallback_remediation')
-                ->defaultValue($defaultOrderedRemediations[1])
+                ->defaultValue(Constants::REMEDIATION_BYPASS)
             ->end()
             ->arrayNode('ordered_remediations')->cannotBeEmpty()
                 ->validate()
                 ->ifArray()
-                ->then(function (array $value) {
-                    return array_values(array_unique($value));
+                ->then(function (array $remediations) {
+                    // Remove Bypass
+                    foreach ($remediations as $key => $remediation){
+                        if($remediation === Constants::REMEDIATION_BYPASS){
+                            unset($remediations[$key]);
+                        }
+                    }
+                    // Add Bypass as the lowest priority remediation
+                    $remediations = array_merge($remediations, [Constants::REMEDIATION_BYPASS]);
+                    return array_values(array_unique($remediations));
                 })
                 ->end()
                 ->scalarPrototype()->cannotBeEmpty()
                 ->end()
-            ->defaultValue(CapiRemediation::ORDERED_REMEDIATIONS)
+            ->defaultValue(array_merge(CapiRemediation::ORDERED_REMEDIATIONS, [Constants::REMEDIATION_BYPASS]))
             ->end()
         ->end()
         ;
@@ -62,15 +69,10 @@ class Capi implements ConfigurationInterface
     {
         $rootNode->validate()
             ->ifTrue(function (array $v) {
-                return !in_array($v['fallback_remediation'], $v['ordered_remediations']);
+                return $v['fallback_remediation'] !== Constants::REMEDIATION_BYPASS &&
+                       !in_array($v['fallback_remediation'], $v['ordered_remediations']);
             })
             ->thenInvalid('Fallback remediation must belong to ordered remediations.')
-            ->end()
-            ->validate()
-            ->ifTrue(function (array $v) {
-                return !in_array(Constants::REMEDIATION_BYPASS, $v['ordered_remediations']);
-            })
-            ->thenInvalid('Bypass remediation must belong to ordered remediations.')
             ->end();
     }
 }
