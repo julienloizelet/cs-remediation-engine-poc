@@ -86,7 +86,7 @@ abstract class AbstractRemediation
      * Remove decisions from cache.
      *
      * @throws CacheException
-     * @throws InvalidArgumentException
+     * @throws InvalidArgumentException|\Psr\Cache\CacheException
      */
     public function removeDecisions(array $decisions): int
     {
@@ -108,7 +108,7 @@ abstract class AbstractRemediation
      * Add decisions in cache.
      *
      * @throws CacheException
-     * @throws InvalidArgumentException
+     * @throws InvalidArgumentException|\Psr\Cache\CacheException
      */
     public function storeDecisions(array $decisions): int
     {
@@ -143,8 +143,7 @@ abstract class AbstractRemediation
         string $scope,
         string $value,
         string $type = Constants::REMEDIATION_BYPASS
-    ): Decision
-    {
+    ): Decision {
         return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
     }
 

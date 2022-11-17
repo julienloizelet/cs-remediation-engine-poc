@@ -16,22 +16,17 @@ namespace CrowdSec\RemediationEngine\Tests\Unit;
  */
 
 use CrowdSec\RemediationEngine\Logger\FileLog;
+use CrowdSec\RemediationEngine\Tests\Constants;
 use CrowdSec\RemediationEngine\Tests\PHPUnitUtil;
 use org\bovigo\vfs\vfsStream;
 use org\bovigo\vfs\vfsStreamDirectory;
 use PHPUnit\Framework\TestCase;
-use CrowdSec\RemediationEngine\Tests\Constants;
 
 /**
  * @covers \CrowdSec\RemediationEngine\Logger\FileLog::__construct
  */
 final class FileLogTest extends TestCase
 {
-    /**
-     * @var vfsStreamDirectory
-     */
-    private $root;
-
     /**
      * @var string
      */
@@ -40,6 +35,10 @@ final class FileLogTest extends TestCase
      * @var string
      */
     private $prodFile;
+    /**
+     * @var vfsStreamDirectory
+     */
+    private $root;
 
     /**
      * set up test environment.
@@ -50,47 +49,6 @@ final class FileLogTest extends TestCase
         $currentDate = date('Y-m-d');
         $this->debugFile = 'debug-' . $currentDate . '.log';
         $this->prodFile = 'prod-' . $currentDate . '.log';
-    }
-
-    public function testProdLog()
-    {
-        $this->assertEquals(
-            false,
-            file_exists($this->root->url() . '/' . $this->debugFile),
-            'Debug File should not exist'
-        );
-
-        $this->assertEquals(
-            false,
-            file_exists($this->root->url() . '/' . $this->prodFile),
-            'Prod File should not exist'
-        );
-
-        $logger = new FileLog(['log_directory_path' => $this->root->url()]);
-
-        // Test prod log
-        $logger->info('', [
-            'type' => 'TEST1',
-        ]);
-
-        $this->assertEquals(
-            true,
-            file_exists($this->root->url() . '/' . $this->prodFile),
-            'Prod File should exist'
-        );
-
-        PHPUnitUtil::assertRegExp(
-            $this,
-            '/.*200.*"type":"TEST1"/',
-            file_get_contents($this->root->url() . '/' . $this->prodFile),
-            'Log content should be correct'
-        );
-
-        $this->assertEquals(
-            false,
-            file_exists($this->root->url() . '/' . $this->debugFile),
-            'Debug File should not exist'
-        );
     }
 
     public function testDebugLog()
@@ -159,6 +117,47 @@ final class FileLogTest extends TestCase
             '/.*200.*"type":"TEST3"/',
             file_get_contents($this->root->url() . '/' . $this->debugFile),
             'Debug log content should be correct'
+        );
+    }
+
+    public function testProdLog()
+    {
+        $this->assertEquals(
+            false,
+            file_exists($this->root->url() . '/' . $this->debugFile),
+            'Debug File should not exist'
+        );
+
+        $this->assertEquals(
+            false,
+            file_exists($this->root->url() . '/' . $this->prodFile),
+            'Prod File should not exist'
+        );
+
+        $logger = new FileLog(['log_directory_path' => $this->root->url()]);
+
+        // Test prod log
+        $logger->info('', [
+            'type' => 'TEST1',
+        ]);
+
+        $this->assertEquals(
+            true,
+            file_exists($this->root->url() . '/' . $this->prodFile),
+            'Prod File should exist'
+        );
+
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/.*200.*"type":"TEST1"/',
+            file_get_contents($this->root->url() . '/' . $this->prodFile),
+            'Log content should be correct'
+        );
+
+        $this->assertEquals(
+            false,
+            file_exists($this->root->url() . '/' . $this->debugFile),
+            'Debug File should not exist'
         );
     }
 }

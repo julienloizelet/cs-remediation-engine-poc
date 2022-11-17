@@ -77,8 +77,6 @@ abstract class AbstractCache
 
     /**
      * Deletes all items in the pool.
-     *
-     * @return bool
      */
     public function clear(): bool
     {
@@ -87,23 +85,18 @@ abstract class AbstractCache
 
     /**
      * Persists any deferred cache items.
-     *
-     * @return bool
      */
     public function commit(): bool
     {
         return $this->adapter->commit();
     }
 
-    /**
-     * @return AdapterInterface
-     */
     public function getAdapter(): AdapterInterface
     {
         return $this->adapter;
     }
 
-    public function saveDeferred(CacheItemInterface $item):bool
+    public function saveDeferred(CacheItemInterface $item): bool
     {
         return $this->adapter->saveDeferred($item);
     }
@@ -111,7 +104,7 @@ abstract class AbstractCache
     /**
      * @throws InvalidArgumentException
      */
-    public function getItem(string $cacheKey):CacheItemInterface
+    public function getItem(string $cacheKey): CacheItemInterface
     {
         return $this->adapter->getItem(base64_encode($cacheKey));
     }
@@ -172,8 +165,7 @@ abstract class AbstractCache
     }
 
     /**
-     * @throws CacheException
-     * @throws InvalidArgumentException
+     * @throws InvalidArgumentException|CacheException|\Psr\Cache\CacheException
      */
     public function removeDecision(Decision $decision): array
     {
@@ -197,8 +189,7 @@ abstract class AbstractCache
     }
 
     /**
-     * @throws CacheException
-     * @throws InvalidArgumentException
+     * @throws InvalidArgumentException|CacheException
      *
      * @SuppressWarnings(PHPMD.CyclomaticComplexity)
      */
@@ -215,7 +206,7 @@ abstract class AbstractCache
                 break;
             case Constants::SCOPE_RANGE:
                 $bucketInt = $this->getRangeIntForIp($ip);
-                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt);
+                $bucketCacheKey = $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt);
                 $bucketItem = $this->getItem($bucketCacheKey);
                 $cachedBuckets = $bucketItem->isHit() ? $bucketItem->get() : [];
                 foreach ($cachedBuckets as $cachedBucket) {
@@ -243,8 +234,6 @@ abstract class AbstractCache
     }
 
     /**
-     * @param bool $value
-     * @return void
      * @codeCoverageIgnore
      */
     public function setStreamMode(bool $value): void
@@ -254,7 +243,7 @@ abstract class AbstractCache
 
     /**
      * @throws CacheException
-     * @throws InvalidArgumentException
+     * @throws InvalidArgumentException|\Psr\Cache\CacheException
      */
     public function storeDecision(Decision $decision): array
     {
@@ -276,9 +265,6 @@ abstract class AbstractCache
         return $result;
     }
 
-    /**
-     * @throws CacheException
-     */
     protected function parseDurationToSeconds(string $duration): int
     {
         /**
@@ -291,18 +277,19 @@ abstract class AbstractCache
                 'type' => 'CACHE_DURATION_PARSE_ERROR',
                 'duration' => $duration,
             ]);
+
             return 0;
         }
         $seconds = 0;
         if (isset($matches[2])) {
-            $seconds += ((int)$matches[2]) * 3600; // hours
+            $seconds += ((int) $matches[2]) * 3600; // hours
         }
         if (isset($matches[3])) {
-            $seconds += ((int)$matches[3]) * 60; // minutes
+            $seconds += ((int) $matches[3]) * 60; // minutes
         }
         $secondsPart = 0;
         if (isset($matches[4])) {
-            $secondsPart += ((int)$matches[4]); // seconds
+            $secondsPart += ((int) $matches[4]); // seconds
         }
         if (isset($matches[5]) && 'm' === $matches[5]) { // units in milliseconds
             $secondsPart *= 0.001;
@@ -312,7 +299,7 @@ abstract class AbstractCache
             $seconds *= -1;
         }
 
-        return (int)round($seconds);
+        return (int) round($seconds);
     }
 
     private function cleanCachedValues(array $cachedValues): array
@@ -361,8 +348,6 @@ abstract class AbstractCache
 
     /**
      * Format range to use a minimal amount of data (less cache data consumption).
-     *
-     * @throws CacheException
      */
     private function formatIpV4Range(Decision $decision): array
     {
@@ -385,10 +370,6 @@ abstract class AbstractCache
         return false === $result ? null : $result;
     }
 
-    /**
-     * @param array $itemsToCache
-     * @return int
-     */
     private function getMaxExpiration(array $itemsToCache): int
     {
         return max(array_column($itemsToCache, self::INDEX_EXP));
@@ -408,7 +389,7 @@ abstract class AbstractCache
         try {
             $result = intdiv($ipInt, self::IPV4_BUCKET_SIZE);
             // @codeCoverageIgnoreStart
-        } catch (\ArithmeticError|\DivisionByZeroError $e) {
+        } catch (\ArithmeticError | \DivisionByZeroError $e) {
             throw new CacheException('Something went wrong during integer division: ' . $e->getMessage());
             // @codeCoverageIgnoreEnd
         }
@@ -424,9 +405,6 @@ abstract class AbstractCache
         return $bucketInt ? [self::RANGE_BUCKET_TAG] : [Constants::CACHE_TAG_REM, $decision->getScope()];
     }
 
-    /**
-     * @throws CacheException
-     */
     private function handleBadIpDuration(Decision $decision, bool $streamMode): int
     {
         $duration = $this->parseDurationToSeconds($decision->getDuration());
@@ -495,12 +473,14 @@ abstract class AbstractCache
     /**
      * @throws CacheException
      * @throws InvalidArgumentException
-     * @throws \Exception
+     * @throws \Exception|\Psr\Cache\CacheException
+     *
+     * @noinspection PhpSameParameterValueInspection
      */
     private function remove(Decision $decision, ?int $bucketInt = null): array
     {
         $result = [self::DONE => 0, self::DEFER => 0];
-        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
+        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->getItem($cacheKey);
 
@@ -514,7 +494,7 @@ abstract class AbstractCache
             unset($cachedValues[$indexToRemove]);
             $cachedValues = $this->cleanCachedValues($cachedValues);
             if (!$cachedValues) {
-                $result[self::DONE] = (int)$this->adapter->deleteItem(base64_encode($cacheKey));
+                $result[self::DONE] = (int) $this->adapter->deleteItem(base64_encode($cacheKey));
 
                 return $result;
             }
@@ -539,11 +519,13 @@ abstract class AbstractCache
      *
      * @throws CacheException
      * @throws InvalidArgumentException
-     * @throws \Exception
+     * @throws \Exception|\Psr\Cache\CacheException
+     *
+     * @noinspection PhpSameParameterValueInspection
      */
     private function store(Decision $decision, ?int $bucketInt = null): array
     {
-        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string)$bucketInt) :
+        $cacheKey = $bucketInt ? $this->getCacheKey(self::IPV4_BUCKET_KEY, (string) $bucketInt) :
             $this->getCacheKey($decision->getScope(), $decision->getValue());
         $item = $this->getItem($cacheKey);
         $cachedValues = $item->isHit() ? $item->get() : [];
@@ -573,7 +555,8 @@ abstract class AbstractCache
     }
 
     /**
-     * @throws \Exception
+     * @throws InvalidArgumentException
+     * @throws \Exception|\Psr\Cache\CacheException
      *
      * @SuppressWarnings(PHPMD.MissingImport)
      */

@@ -1,4 +1,6 @@
-<?php /** @noinspection PhpRedundantCatchClauseInspection */
+<?php
+
+/** @noinspection PhpRedundantCatchClauseInspection */
 
 declare(strict_types=1);
 
@@ -16,16 +18,15 @@ namespace CrowdSec\RemediationEngine\Tests\Unit;
  */
 
 use CrowdSec\RemediationEngine\CapiRemediation;
+use CrowdSec\RemediationEngine\Configuration\Cache\Memcached as MemcachedConfig;
+use CrowdSec\RemediationEngine\Configuration\Cache\PhpFiles as PhpFilesConfig;
+use CrowdSec\RemediationEngine\Configuration\Cache\Redis as RedisConfig;
+use CrowdSec\RemediationEngine\Configuration\Capi as CapiRemediationConfig;
 use CrowdSec\RemediationEngine\Constants;
 use CrowdSec\RemediationEngine\Tests\PHPUnitUtil;
-use CrowdSec\RemediationEngine\Configuration\Capi as CapiRemediationConfig;
-use CrowdSec\RemediationEngine\Configuration\Cache\Memcached as MemcachedConfig;
-use CrowdSec\RemediationEngine\Configuration\Cache\Redis as RedisConfig;
-use CrowdSec\RemediationEngine\Configuration\Cache\PhpFiles as PhpFilesConfig;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
-
+use Symfony\Component\Config\Definition\Processor;
 
 /**
  * @covers \CrowdSec\RemediationEngine\Configuration\Capi::validate
@@ -34,12 +35,9 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
  * @covers \CrowdSec\RemediationEngine\Configuration\Cache\Redis::getConfigTreeBuilder
  * @covers \CrowdSec\RemediationEngine\Configuration\Cache\Memcached::getConfigTreeBuilder
  * @covers \CrowdSec\RemediationEngine\Configuration\Cache\PhpFiles::getConfigTreeBuilder
- *
- *
  */
 final class ConfigurationTest extends TestCase
 {
-
     public function testCapiConfiguration()
     {
         $configuration = new CapiRemediationConfig();
@@ -51,7 +49,7 @@ final class ConfigurationTest extends TestCase
         $this->assertEquals(
             [
                 'fallback_remediation' => 'bypass',
-                'ordered_remediations' => CapiRemediation::ORDERED_REMEDIATIONS
+                'ordered_remediations' => CapiRemediation::ORDERED_REMEDIATIONS,
             ],
             $result,
             'Should set default config'
@@ -62,7 +60,7 @@ final class ConfigurationTest extends TestCase
         $this->assertEquals(
             [
                 'fallback_remediation' => 'bypass',
-                'ordered_remediations' => ['ban', 'captcha', 'bypass']
+                'ordered_remediations' => ['ban', 'captcha', 'bypass'],
             ],
             $result,
             'Should normalize config'
@@ -111,7 +109,7 @@ final class ConfigurationTest extends TestCase
                 'stream_mode' => false,
                 'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
                 'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
-                'memcached_dsn' => 'memcached_dsn_test'
+                'memcached_dsn' => 'memcached_dsn_test',
             ],
             $result,
             'Should set default config'
@@ -149,56 +147,6 @@ final class ConfigurationTest extends TestCase
         );
     }
 
-    public function testRedisConfiguration()
-    {
-        $configuration = new RedisConfig();
-        $processor = new Processor();
-        // Test default config
-        $configs = ['redis_dsn' => 'redis_dsn_test'];
-        $result = $processor->processConfiguration($configuration, [$configs]);
-        $this->assertEquals(
-            [
-                'stream_mode' => false,
-                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
-                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
-                'redis_dsn' => 'redis_dsn_test'
-            ],
-            $result,
-            'Should set default config'
-        );
-
-        // Test missing dsn
-        $error = '';
-        $configs = [];
-        try {
-            $processor->processConfiguration($configuration, [$configs]);
-        } catch (InvalidConfigurationException $e) {
-            $error = $e->getMessage();
-        }
-
-        PHPUnitUtil::assertRegExp(
-            $this,
-            '/redis_dsn.*must be configured/',
-            $error,
-            'Should throw error if dsn is missing'
-        );
-        // Test empty dsn
-        $error = '';
-        $configs = ['redis_dsn' => ''];
-        try {
-            $processor->processConfiguration($configuration, [$configs]);
-        } catch (InvalidConfigurationException $e) {
-            $error = $e->getMessage();
-        }
-
-        PHPUnitUtil::assertRegExp(
-            $this,
-            '/redis_dsn.*cannot contain an empty value/',
-            $error,
-            'Should throw error if dsn is empty'
-        );
-    }
-
     public function testPhpFilesConfiguration()
     {
         $configuration = new PhpFilesConfig();
@@ -211,7 +159,7 @@ final class ConfigurationTest extends TestCase
                 'stream_mode' => false,
                 'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
                 'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
-                'fs_cache_path' => 'fs_cache_path_test'
+                'fs_cache_path' => 'fs_cache_path_test',
             ],
             $result,
             'Should set default config'
@@ -244,6 +192,56 @@ final class ConfigurationTest extends TestCase
         PHPUnitUtil::assertRegExp(
             $this,
             '/fs_cache_path.*cannot contain an empty value/',
+            $error,
+            'Should throw error if dsn is empty'
+        );
+    }
+
+    public function testRedisConfiguration()
+    {
+        $configuration = new RedisConfig();
+        $processor = new Processor();
+        // Test default config
+        $configs = ['redis_dsn' => 'redis_dsn_test'];
+        $result = $processor->processConfiguration($configuration, [$configs]);
+        $this->assertEquals(
+            [
+                'stream_mode' => false,
+                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
+                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
+                'redis_dsn' => 'redis_dsn_test',
+            ],
+            $result,
+            'Should set default config'
+        );
+
+        // Test missing dsn
+        $error = '';
+        $configs = [];
+        try {
+            $processor->processConfiguration($configuration, [$configs]);
+        } catch (InvalidConfigurationException $e) {
+            $error = $e->getMessage();
+        }
+
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/redis_dsn.*must be configured/',
+            $error,
+            'Should throw error if dsn is missing'
+        );
+        // Test empty dsn
+        $error = '';
+        $configs = ['redis_dsn' => ''];
+        try {
+            $processor->processConfiguration($configuration, [$configs]);
+        } catch (InvalidConfigurationException $e) {
+            $error = $e->getMessage();
+        }
+
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/redis_dsn.*cannot contain an empty value/',
             $error,
             'Should throw error if dsn is empty'
         );

@@ -38,7 +38,7 @@ class CapiRemediation extends AbstractRemediation
      * {@inheritdoc}
      *
      * @throws CacheException
-     * @throws InvalidArgumentException
+     * @throws InvalidArgumentException|\Psr\Cache\CacheException
      */
     public function getIpRemediation(string $ip): string
     {
@@ -71,7 +71,7 @@ class CapiRemediation extends AbstractRemediation
      *
      * @throws CacheException
      * @throws InvalidArgumentException
-     * @throws RemediationException
+     * @throws RemediationException|\Psr\Cache\CacheException
      */
     public function refreshDecisions(): array
     {

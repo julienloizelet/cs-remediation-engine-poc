@@ -24,7 +24,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4_2],
+                    'value' => Constants::IP_V4_2, ],
             ],
             'deleted' => [],
         ],
@@ -35,7 +35,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4],
+                    'value' => Constants::IP_V4, ],
             ],
             'deleted' => [],
         ],
@@ -46,13 +46,13 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'bypass',
-                    'value' => Constants::IP_V4_2],
+                    'value' => Constants::IP_V4_2, ],
                 ['duration' => '147h',
                     'origin' => 'CAPI',
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4_2]
+                    'value' => Constants::IP_V4_2, ],
             ],
             'deleted' => [],
         ],
@@ -63,14 +63,14 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'captcha',
-                    'value' => Constants::IP_V4_2
+                    'value' => Constants::IP_V4_2,
                 ],
                 ['duration' => '147h',
                     'origin' => 'CAPI',
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4_2
+                    'value' => Constants::IP_V4_2,
                 ],
             ],
             'new' => [],
@@ -82,7 +82,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE],
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE, ],
             ],
             'deleted' => [],
         ],
@@ -93,7 +93,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V6 . '/' . Constants::IP_RANGE],
+                    'value' => Constants::IP_V6 . '/' . Constants::IP_RANGE, ],
             ],
             'deleted' => [],
         ],
@@ -104,7 +104,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE],
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE, ],
             ],
             'new' => [],
         ],
@@ -116,7 +116,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4
+                    'value' => Constants::IP_V4,
                 ],
                 [
                     'duration' => '147h',
@@ -124,7 +124,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4
+                    'value' => Constants::IP_V4,
                 ],
                 [
                     'duration' => '147h',
@@ -132,7 +132,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE
+                    'value' => Constants::IP_V4 . '/' . Constants::IP_RANGE,
                 ],
                 [
                     'duration' => '147h',
@@ -140,7 +140,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'range',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4_2 . '/' . Constants::IP_RANGE
+                    'value' => Constants::IP_V4_2 . '/' . Constants::IP_RANGE,
                 ],
                 [
                     'duration' => '147h',
@@ -148,9 +148,8 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4_2
+                    'value' => Constants::IP_V4_2,
                 ],
-
             ],
             'deleted' => [],
         ],
@@ -162,9 +161,8 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4
+                    'value' => Constants::IP_V4,
                 ],
-
             ],
             'new' => [
                 [
@@ -173,7 +171,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4_2
+                    'value' => Constants::IP_V4_2,
                 ],
                 [
                     'duration' => '147h',
@@ -181,7 +179,7 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'ip',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4_2
+                    'value' => Constants::IP_V4_2,
                 ],
             ],
         ],
@@ -193,9 +191,8 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'do-not-know-delete',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4
+                    'value' => Constants::IP_V4,
                 ],
-
             ],
             'new' => [],
         ],
@@ -207,12 +204,10 @@ class MockedData
                     'scenario' => 'manual',
                     'scope' => 'do-not-know-store',
                     'type' => 'ban',
-                    'value' => Constants::IP_V4
+                    'value' => Constants::IP_V4,
                 ],
-
             ],
             'deleted' => [],
-        ]
+        ],
     ];
-
 }

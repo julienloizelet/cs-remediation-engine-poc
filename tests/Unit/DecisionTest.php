@@ -15,12 +15,13 @@ namespace CrowdSec\RemediationEngine\Tests\Unit;
  * @license   MIT License
  */
 
-use CrowdSec\RemediationEngine\CapiRemediation;
-use PHPUnit\Framework\TestCase;
 use CrowdSec\RemediationEngine\AbstractRemediation;
-use CrowdSec\RemediationEngine\Decision;
+use CrowdSec\RemediationEngine\CapiRemediation;
 use CrowdSec\RemediationEngine\Constants;
+use CrowdSec\RemediationEngine\Decision;
 use CrowdSec\RemediationEngine\Tests\Constants as TestConstants;
+use PHPUnit\Framework\TestCase;
+
 /**
  * @covers \CrowdSec\RemediationEngine\Decision::toArray
  * @covers \CrowdSec\RemediationEngine\Decision::__construct
@@ -32,23 +33,13 @@ use CrowdSec\RemediationEngine\Tests\Constants as TestConstants;
  * @covers \CrowdSec\RemediationEngine\Decision::getType
  * @covers \CrowdSec\RemediationEngine\Decision::getValue
  * @covers \CrowdSec\RemediationEngine\Decision::handleIdentifier
- *
  */
 final class DecisionTest extends TestCase
 {
-
     /**
      * @var AbstractRemediation
      */
     private $remediation;
-
-    protected function getRemediationMock()
-    {
-        return $this->getMockBuilder('CrowdSec\RemediationEngine\CapiRemediation')
-            ->disableOriginalConstructor()
-            ->onlyMethods(['getConfig'])
-            ->getMock();
-    }
 
     /**
      * set up test environment.
@@ -58,18 +49,15 @@ final class DecisionTest extends TestCase
         $this->remediation = $this->getRemediationMock();
     }
 
-
-
     public function testConstruct()
     {
-
         $this->remediation
         ->method('getConfig')
         ->will(
             $this->returnValueMap(
                 [
                     ['ordered_remediations', [], CapiRemediation::ORDERED_REMEDIATIONS],
-                    ['fallback_remediation', null, Constants::REMEDIATION_BYPASS]
+                    ['fallback_remediation', null, Constants::REMEDIATION_BYPASS],
                 ]
             )
         );
@@ -79,7 +67,7 @@ final class DecisionTest extends TestCase
 
         $this->assertEquals(
             [
-                'identifier' => 'Unit-ban-ip-'. TestConstants::IP_V4,
+                'identifier' => 'Unit-ban-ip-' . TestConstants::IP_V4,
                 'origin' => 'Unit',
                 'scope' => 'ip',
                 'value' => TestConstants::IP_V4,
@@ -112,7 +100,7 @@ final class DecisionTest extends TestCase
 
         $this->assertEquals(
             [
-                'identifier' => 'Unit-bypass-ip-'. TestConstants::IP_V4,
+                'identifier' => 'Unit-bypass-ip-' . TestConstants::IP_V4,
                 'origin' => 'Unit',
                 'scope' => 'ip',
                 'value' => TestConstants::IP_V4,
@@ -123,20 +111,17 @@ final class DecisionTest extends TestCase
             $decision->toArray(),
             'Decision should be as expected'
         );
-
-
     }
 
     public function testCustomOrderedRemediations()
     {
-
         $this->remediation
             ->method('getConfig')
             ->will(
                 $this->returnValueMap(
                     [
                         ['ordered_remediations', [], ['ban', 'captcha', 'bypass']],
-                        ['fallback_remediation', null, Constants::REMEDIATION_BYPASS]
+                        ['fallback_remediation', null, Constants::REMEDIATION_BYPASS],
                     ]
                 )
             );
@@ -146,7 +131,7 @@ final class DecisionTest extends TestCase
 
         $this->assertEquals(
             [
-                'identifier' => 'Unit-ban-ip-'. TestConstants::IP_V4,
+                'identifier' => 'Unit-ban-ip-' . TestConstants::IP_V4,
                 'origin' => 'Unit',
                 'scope' => 'ip',
                 'value' => TestConstants::IP_V4,
@@ -163,7 +148,7 @@ final class DecisionTest extends TestCase
 
         $this->assertEquals(
             [
-                'identifier' => 'Unit-bypass-ip-'. TestConstants::IP_V4,
+                'identifier' => 'Unit-bypass-ip-' . TestConstants::IP_V4,
                 'origin' => 'Unit',
                 'scope' => 'ip',
                 'value' => TestConstants::IP_V4,
@@ -180,7 +165,7 @@ final class DecisionTest extends TestCase
 
         $this->assertEquals(
             [
-                'identifier' => 'Unit-captcha-ip-'. TestConstants::IP_V4,
+                'identifier' => 'Unit-captcha-ip-' . TestConstants::IP_V4,
                 'origin' => 'Unit',
                 'scope' => 'ip',
                 'value' => TestConstants::IP_V4,
@@ -191,7 +176,13 @@ final class DecisionTest extends TestCase
             $decision->toArray(),
             'Decision should be as expected'
         );
+    }
 
-
+    protected function getRemediationMock()
+    {
+        return $this->getMockBuilder('CrowdSec\RemediationEngine\CapiRemediation')
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getConfig'])
+            ->getMock();
     }
 }

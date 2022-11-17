@@ -75,6 +75,7 @@ class Memcached extends AbstractCache
      * To catch this warning as a clean exception we have to temporarily change the error handler.
      *
      * @throws CacheException
+     *
      * @codeCoverageIgnore
      */
     private function setCustomErrorHandler(): void

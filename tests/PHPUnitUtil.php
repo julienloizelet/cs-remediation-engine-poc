@@ -18,6 +18,15 @@ use PHPUnit\Runner\Version;
 
 class PHPUnitUtil
 {
+    public static function assertRegExp($testCase, $pattern, $string, $message = '')
+    {
+        if (version_compare(self::getPHPUnitVersion(), '9.0', '>=')) {
+            $testCase->assertMatchesRegularExpression($pattern, $string, $message);
+        } else {
+            $testCase->assertRegExp($pattern, $string, $message);
+        }
+    }
+
     public static function callMethod($obj, $name, array $args)
     {
         $class = new \ReflectionClass($obj);
@@ -30,14 +39,5 @@ class PHPUnitUtil
     public static function getPHPUnitVersion(): string
     {
         return Version::id();
-    }
-
-    public static function assertRegExp($testCase, $pattern, $string, $message = '')
-    {
-        if (version_compare(self::getPHPUnitVersion(), '9.0', '>=')) {
-            $testCase->assertMatchesRegularExpression($pattern, $string, $message);
-        } else {
-            $testCase->assertRegExp($pattern, $string, $message);
-        }
     }
 }

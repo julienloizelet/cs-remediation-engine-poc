@@ -15,26 +15,18 @@ namespace CrowdSec\RemediationEngine\Tests\Unit;
  * @license   MIT License
  */
 
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
 abstract class AbstractRemediation extends TestCase
 {
-
-    protected function getWatcherMock()
-    {
-        return $this->getMockBuilder('CrowdSec\CapiClient\Watcher')
-            ->disableOriginalConstructor()
-            ->onlyMethods(['getStreamDecisions'])
-            ->getMock();
-    }
-
     protected function getCacheMock(
         string $type,
         array $configs,
         LoggerInterface $logger = null,
         array $methods = []
-    )
+    ): MockObject
     {
         switch ($type) {
             case 'PhpFilesAdapter':
@@ -49,10 +41,18 @@ abstract class AbstractRemediation extends TestCase
             default:
                 throw new \Exception('Unknown $type:' . $type);
         }
+
         return $this->getMockBuilder($class)
             ->setConstructorArgs(['configs' => $configs, 'logger' => $logger])
             ->onlyMethods($methods)
             ->getMock();
     }
 
+    protected function getWatcherMock()
+    {
+        return $this->getMockBuilder('CrowdSec\CapiClient\Watcher')
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getStreamDecisions'])
+            ->getMock();
+    }
 }

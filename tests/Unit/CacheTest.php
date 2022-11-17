@@ -28,7 +28,6 @@ use org\bovigo\vfs\vfsStream;
 use PHPUnit\Framework\TestCase;
 
 /**
-
  * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::setCustomErrorHandler
  * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::unsetCustomErrorHandler
  * @uses \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
@@ -71,8 +70,6 @@ use PHPUnit\Framework\TestCase;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::formatIpV4Range
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getRangeIntForIp
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleRangeScoped
- *
- *
  */
 final class CacheTest extends TestCase
 {
@@ -80,21 +77,27 @@ final class CacheTest extends TestCase
      * @var AbstractCache
      */
     private $cacheStorage;
-
+    /**
+     * @var Memcached
+     */
+    private $memcachedStorage;
     /**
      * @var PhpFiles
      */
     private $phpFileStorage;
-
     /**
      * @var Redis
      */
     private $redisStorage;
 
-    /**
-     * @var Memcached
-     */
-    private $memcachedStorage;
+    public function cacheTypeProvider(): array
+    {
+        return [
+            'PhpFilesAdapter' => ['PhpFilesAdapter'],
+            'RedisAdapter' => ['RedisAdapter'],
+            'MemcachedAdapter' => ['MemcachedAdapter'],
+        ];
+    }
 
     public function setUp(): void
     {
@@ -114,37 +117,6 @@ final class CacheTest extends TestCase
             'redis_dsn' => getenv('redis_dsn') ?: 'redis://redis:6379',
         ];
         $this->redisStorage = new Redis($cacheRedisConfigs, $this->logger);
-    }
-
-    protected function tearDown(): void
-    {
-        $this->cacheStorage->clear();
-    }
-
-    public function cacheTypeProvider(): array
-    {
-        return [
-            'PhpFilesAdapter' => ['PhpFilesAdapter'],
-            'RedisAdapter' => ['RedisAdapter'],
-            'MemcachedAdapter' => ['MemcachedAdapter'],
-        ];
-    }
-
-    private function setCache(string $type)
-    {
-        switch ($type) {
-            case 'PhpFilesAdapter':
-                $this->cacheStorage = $this->phpFileStorage;
-                break;
-            case 'RedisAdapter':
-                $this->cacheStorage = $this->redisStorage;
-                break;
-            case 'MemcachedAdapter':
-                $this->cacheStorage = $this->memcachedStorage;
-                break;
-            default:
-                throw new \Exception('Unknown $type:' . $type);
-        }
     }
 
     /**
@@ -206,7 +178,7 @@ final class CacheTest extends TestCase
         } catch (CacheException $e) {
             $error = $e->getMessage();
         }
-        if ($cacheType === 'PhpFilesAdapter') {
+        if ('PhpFilesAdapter' === $cacheType) {
             $this->assertEquals(
                 '',
                 $error,
@@ -265,7 +237,6 @@ final class CacheTest extends TestCase
 
     public function testPrivateOrProtectedMethods()
     {
-
         $this->setCache('PhpFilesAdapter');
         // parseDurationToSeconds
         $result = PHPUnitUtil::callMethod(
@@ -285,7 +256,7 @@ final class CacheTest extends TestCase
             ['147h']
         );
         $this->assertEquals(
-            3600*147,
+            3600 * 147,
             $result,
             'Should convert in seconds'
         );
@@ -296,7 +267,7 @@ final class CacheTest extends TestCase
             ['147h23m43s']
         );
         $this->assertEquals(
-            3600*147+23*60+43,
+            3600 * 147 + 23 * 60 + 43,
             $result,
             'Should convert in seconds'
         );
@@ -307,7 +278,7 @@ final class CacheTest extends TestCase
             ['147h23m43000.5665ms']
         );
         $this->assertEquals(
-            3600*147+23*60+43,
+            3600 * 147 + 23 * 60 + 43,
             $result,
             'Should convert in seconds'
         );
@@ -318,7 +289,7 @@ final class CacheTest extends TestCase
             ['23m43s']
         );
         $this->assertEquals(
-            23*60+43,
+            23 * 60 + 43,
             $result,
             'Should convert in seconds'
         );
@@ -328,7 +299,7 @@ final class CacheTest extends TestCase
             ['-23m43s']
         );
         $this->assertEquals(
-            -23*60-43,
+            -23 * 60 - 43,
             $result,
             'Should convert in seconds'
         );
@@ -412,15 +383,14 @@ final class CacheTest extends TestCase
                 'ban',
                 1668577960,
                 'CAPI-ban-range-52.3.230.0/24',
-                0
+                0,
             ],
             [
                 'ban',
                 1668577970,
                 'CAPI-ban-range-52.3.230.0/24',
-                0
+                0,
             ],
-
         ];
         $result = PHPUnitUtil::callMethod(
             $this->cacheStorage,
@@ -438,15 +408,14 @@ final class CacheTest extends TestCase
                 'ban',
                 911125444, //  Sunday 15 November 1998 10:24:04 (expired)
                 'CAPI-ban-range-52.3.230.0/24',
-                0
+                0,
             ],
             [
                 'ban',
                 5897183044, //  Monday 15 November 2156 10:24:04 (not expired, I guess)
                 'CAPI-ban-range-52.3.230.0/24',
-                0
+                0,
             ],
-
         ];
         $result = PHPUnitUtil::callMethod(
             $this->cacheStorage,
@@ -458,16 +427,32 @@ final class CacheTest extends TestCase
                 'ban',
                 5897183044,
                 'CAPI-ban-range-52.3.230.0/24',
-                0
+                0,
             ]],
             $result,
             'Should return correct maximum'
         );
     }
 
+    public function testRetrieveUnknownScope()
+    {
+        $this->setCache('PhpFilesAdapter');
+        $result = $this->cacheStorage->retrieveDecisionsForIp('UNDEFINED', TestConstants::IP_V4);
+        $this->assertCount(
+            0,
+            $result,
+            'Should return empty array'
+        );
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/.*300.*"type":"CACHE_RETRIEVE_FOR_IP_NON_IMPLEMENTED_SCOPE"/',
+            file_get_contents($this->root->url() . '/' . $this->prodFile),
+            'Prod log content should be correct'
+        );
+    }
 
-    public function testStoreAndRemoveAndRetrieveDecisionsForIpScope(){
-
+    public function testStoreAndRemoveAndRetrieveDecisionsForIpScope()
+    {
         $this->setCache('PhpFilesAdapter');
 
         $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
@@ -486,7 +471,7 @@ final class CacheTest extends TestCase
         );
         $decision->method('getDuration')->will(
             $this->returnValue(
-                "147h"
+                '147h'
             )
         );
         $decision->method('getScope')->will(
@@ -507,7 +492,7 @@ final class CacheTest extends TestCase
         // Test 1 : retrieve stored IP
         $this->cacheStorage->storeDecision($decision);
 
-        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP,  TestConstants::IP_V4);
+        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP, TestConstants::IP_V4);
         $this->assertCount(
             1,
             $result[0],
@@ -521,7 +506,7 @@ final class CacheTest extends TestCase
 
         // Test 2 : retrieve unstored IP
         $this->cacheStorage->removeDecision($decision);
-        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP,  TestConstants::IP_V4);
+        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_IP, TestConstants::IP_V4);
         $this->assertCount(
             0,
             $result,
@@ -529,8 +514,8 @@ final class CacheTest extends TestCase
         );
     }
 
-    public function testStoreAndRemoveAndRetrieveDecisionsForRangeScope(){
-
+    public function testStoreAndRemoveAndRetrieveDecisionsForRangeScope()
+    {
         $this->setCache('PhpFilesAdapter');
 
         $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
@@ -549,7 +534,7 @@ final class CacheTest extends TestCase
         );
         $decision->method('getDuration')->will(
             $this->returnValue(
-                "147h"
+                '147h'
             )
         );
         $decision->method('getScope')->will(
@@ -570,7 +555,7 @@ final class CacheTest extends TestCase
         // Test 1 : retrieve stored Range
         $this->cacheStorage->storeDecision($decision);
 
-        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE,  TestConstants::IP_V4);
+        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE, TestConstants::IP_V4);
         $this->assertCount(
             1,
             $result[0],
@@ -584,7 +569,7 @@ final class CacheTest extends TestCase
 
         // Test 2 : retrieve unstored Range
         $this->cacheStorage->removeDecision($decision);
-        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE,  TestConstants::IP_V4);
+        $result = $this->cacheStorage->retrieveDecisionsForIp(Constants::SCOPE_RANGE, TestConstants::IP_V4);
         $this->assertCount(
             0,
             $result,
@@ -592,21 +577,25 @@ final class CacheTest extends TestCase
         );
     }
 
-    public function testRetrieveUnknownScope(){
+    protected function tearDown(): void
+    {
+        $this->cacheStorage->clear();
+    }
 
-        $this->setCache('PhpFilesAdapter');
-        $result = $this->cacheStorage->retrieveDecisionsForIp('UNDEFINED',  TestConstants::IP_V4);
-        $this->assertCount(
-            0,
-            $result,
-            'Should return empty array'
-        );
-        PHPUnitUtil::assertRegExp(
-            $this,
-            '/.*300.*"type":"CACHE_RETRIEVE_FOR_IP_NON_IMPLEMENTED_SCOPE"/',
-            file_get_contents($this->root->url() . '/' . $this->prodFile),
-            'Prod log content should be correct'
-        );
-
+    private function setCache(string $type)
+    {
+        switch ($type) {
+            case 'PhpFilesAdapter':
+                $this->cacheStorage = $this->phpFileStorage;
+                break;
+            case 'RedisAdapter':
+                $this->cacheStorage = $this->redisStorage;
+                break;
+            case 'MemcachedAdapter':
+                $this->cacheStorage = $this->memcachedStorage;
+                break;
+            default:
+                throw new \Exception('Unknown $type:' . $type);
+        }
     }
 }
