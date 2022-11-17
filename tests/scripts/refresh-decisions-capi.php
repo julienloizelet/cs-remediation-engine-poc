@@ -10,34 +10,31 @@ use CrowdSec\RemediationEngine\CacheStorage\Redis;
 use CrowdSec\RemediationEngine\CapiRemediation;
 use CrowdSec\RemediationEngine\Logger\FileLog;
 
-// Init a logger
+// Init  logger
 $logger = new FileLog(['debug_mode' => true]);
-
-// Init Client
+// Init client
 $clientConfigs = [
     'machine_id_prefix' => 'remediationtest',
     'scenarios' => ['crowdsecurity/http-sensitive-files'],
 ];
 $capiClient = new Watcher($clientConfigs, new FileStorage(), null, $logger);
-
-// Init PhpFile Cache storage
+// Init PhpFiles cache storage
 $cacheFileConfigs = [
     'fs_cache_path' => __DIR__ . '/.cache',
 ];
 $phpFileCache = new PhpFiles($cacheFileConfigs, $logger);
-// Init Memcached Cache storage
+// Init Memcached cache storage
 $cacheMemcachedConfigs = [
     'memcached_dsn' => 'memcached://memcached:11211',
 ];
 $memcachedCache = new Memcached($cacheMemcachedConfigs, $logger);
-// Init Redis Cache storage
+// Init Redis cache storage
 $cacheRedisConfigs = [
     'redis_dsn' => 'redis://redis:6379',
 ];
 $redisCache = new Redis($cacheRedisConfigs, $logger);
-
+// Init CAPI remediation
 $remediationConfigs = [];
-
-$remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $redisCache, $logger);
-
+$remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $phpFileCache, $logger);
+// Retrieve fresh decisions from CAPI
 echo json_encode($remediationEngine->refreshDecisions()) . \PHP_EOL;

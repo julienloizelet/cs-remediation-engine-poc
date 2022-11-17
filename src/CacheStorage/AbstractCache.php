@@ -334,7 +334,6 @@ abstract class AbstractCache
                 self::INDEX_VALUE => Constants::REMEDIATION_BYPASS,
                 self::INDEX_EXP => time() + $duration,
                 self::INDEX_ID => $decision->getIdentifier(),
-                self::INDEX_PRIO => $decision->getPriority(),
             ];
         }
 
@@ -342,7 +341,6 @@ abstract class AbstractCache
             self::INDEX_VALUE => $decision->getType(),
             self::INDEX_EXP => time() + $this->handleBadIpDuration($decision, $streamMode),
             self::INDEX_ID => $decision->getIdentifier(),
-            self::INDEX_PRIO => $decision->getPriority(),
         ];
     }
 

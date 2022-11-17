@@ -84,7 +84,6 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @covers \CrowdSec\RemediationEngine\Decision::__construct
  * @covers \CrowdSec\RemediationEngine\Decision::getDuration
  * @covers \CrowdSec\RemediationEngine\Decision::getIdentifier
- * @covers \CrowdSec\RemediationEngine\Decision::getPriority
  * @covers \CrowdSec\RemediationEngine\Decision::getScope
  * @covers \CrowdSec\RemediationEngine\Decision::getType
  * @covers \CrowdSec\RemediationEngine\Decision::getValue
@@ -334,12 +333,7 @@ final class CapiRemediationTest extends AbstractRemediation
             'Remediation should have been cached with correct value'
         );
         $this->assertEquals(
-            1,
-            $cachedValue[0][AbstractCache::INDEX_PRIO],
-            'Remediation should have been cached with correct priority'
-        );
-        $this->assertEquals(
-            Constants::ORIGIN. Decision::ID_SEP .
+            Constants::ORIGIN . Decision::ID_SEP .
             Constants::REMEDIATION_BYPASS . Decision::ID_SEP .
             Constants::SCOPE_IP . Decision::ID_SEP .
             TestConstants::IP_V4,
@@ -491,6 +485,69 @@ final class CapiRemediationTest extends AbstractRemediation
             1,
             $result,
             'Should return 1'
+        );
+        // sortDecisionsByRemediationPriority
+        // Test 1 : default
+        $decisions = [
+            [
+                'bypass',
+                1668577960,
+                'CAPI-bypass-range-52.3.230.0/24',
+            ],
+            [
+                'ban',
+                1668577960,
+                'CAPI-ban-range-52.3.230.0/24',
+            ],
+        ];
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'sortDecisionsByRemediationPriority',
+            [$decisions]
+        );
+        $this->assertEquals(
+            'ban',
+            $result[0][0],
+            'Should return highest priority (ban > bypass)'
+        );
+        // Test 2 : custom ordered priorities
+        $remediationConfigs = [
+            'ordered_remediations' => [Constants::REMEDIATION_BYPASS, 'captcha', Constants::REMEDIATION_BAN],
+            'fallback_remediation' => 'captcha',
+        ];
+        $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, $this->logger);
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'sortDecisionsByRemediationPriority',
+            [$decisions]
+        );
+        $this->assertEquals(
+            'bypass',
+            $result[0][0],
+            'Should return highest priority (bypass > ban)'
+        );
+        // Test 3 : fallback
+        $decisions = [
+            [
+                'unknown',
+                1668577960,
+                'CAPI-unknown-range-52.3.230.0/24',
+            ],
+            [
+                'ban',
+                1668577960,
+                'CAPI-ban-range-52.3.230.0/24',
+            ],
+        ];
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'sortDecisionsByRemediationPriority',
+            [$decisions]
+        );
+        $this->assertEquals(
+            'captcha',
+            $result[0][0],
+            'Should return highest priority (fallback captcha > ban)'
         );
     }
 

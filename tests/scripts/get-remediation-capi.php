@@ -20,34 +20,32 @@ if (!$ip) {
     );
 }
 
-// Init a logger
+// Init  logger
 $logger = new FileLog(['debug_mode' => true]);
-
-// Init Client
+// Init client
 $clientConfigs = [
     'machine_id_prefix' => 'remediationtest',
     'scenarios' => ['crowdsecurity/http-sensitive-files'],
 ];
 $capiClient = new Watcher($clientConfigs, new FileStorage(), null, $logger);
 
-// Init PhpFile Cache storage
+// Init PhpFiles cache storage
 $cacheFileConfigs = [
     'fs_cache_path' => __DIR__ . '/.cache',
 ];
 $phpFileCache = new PhpFiles($cacheFileConfigs, $logger);
-// Init Memcached Cache storage
+// Init Memcached cache storage
 $cacheMemcachedConfigs = [
     'memcached_dsn' => 'memcached://memcached:11211',
 ];
 $memcachedCache = new Memcached($cacheMemcachedConfigs, $logger);
-// Init Redis Cache storage
+// Init Redis cache storage
 $cacheRedisConfigs = [
     'redis_dsn' => 'redis://redis:6379',
 ];
 $redisCache = new Redis($cacheRedisConfigs, $logger);
-
+// Init CAPI remediation
 $remediationConfigs = [];
-
 $remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $phpFileCache, $logger);
-
+// Determine the remediation for the given IP
 echo $remediationEngine->getIpRemediation($ip) . \PHP_EOL;

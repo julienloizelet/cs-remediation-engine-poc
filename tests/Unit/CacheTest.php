@@ -457,7 +457,7 @@ final class CacheTest extends TestCase
 
         $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
             ->disableOriginalConstructor()
-            ->onlyMethods(['getValue', 'getType', 'getDuration', 'getScope', 'getIdentifier', 'getPriority'])
+            ->onlyMethods(['getValue', 'getType', 'getDuration', 'getScope', 'getIdentifier'])
             ->getMock();
         $decision->method('getValue')->will(
             $this->returnValue(
@@ -482,11 +482,6 @@ final class CacheTest extends TestCase
         $decision->method('getIdentifier')->will(
             $this->returnValue(
                 'testip'
-            )
-        );
-        $decision->method('getPriority')->will(
-            $this->returnValue(
-                0
             )
         );
         // Test 1 : retrieve stored IP
@@ -520,7 +515,7 @@ final class CacheTest extends TestCase
 
         $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
             ->disableOriginalConstructor()
-            ->onlyMethods(['getValue', 'getType', 'getDuration', 'getScope', 'getIdentifier', 'getPriority'])
+            ->onlyMethods(['getValue', 'getType', 'getDuration', 'getScope', 'getIdentifier'])
             ->getMock();
         $decision->method('getValue')->will(
             $this->returnValue(
@@ -545,11 +540,6 @@ final class CacheTest extends TestCase
         $decision->method('getIdentifier')->will(
             $this->returnValue(
                 'testrange'
-            )
-        );
-        $decision->method('getPriority')->will(
-            $this->returnValue(
-                0
             )
         );
         // Test 1 : retrieve stored Range

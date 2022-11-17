@@ -26,8 +26,7 @@ abstract class AbstractRemediation extends TestCase
         array $configs,
         LoggerInterface $logger = null,
         array $methods = []
-    ): MockObject
-    {
+    ): MockObject {
         switch ($type) {
             case 'PhpFilesAdapter':
                 $class = 'CrowdSec\RemediationEngine\CacheStorage\PhpFiles';

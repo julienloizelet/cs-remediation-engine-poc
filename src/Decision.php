@@ -10,14 +10,12 @@ class Decision
     private $duration;
     private $identifier;
     private $origin;
-    private $priority;
     private $scenario;
     private $scope;
     private $type;
     private $value;
 
     public function __construct(
-        AbstractRemediation $remediation,
         string $scope,
         string $value,
         string $type,
@@ -32,13 +30,8 @@ class Decision
         $this->duration = $duration;
         $this->scenario = $scenario;
 
-        $orderedRemediation = $remediation->getConfig('ordered_remediations', []);
-        $fallbackRemediation = $remediation->getConfig('fallback_remediation');
-        $this->type = in_array($type, $orderedRemediation) ? $type : $fallbackRemediation;
+        $this->type = $type;
         $this->identifier = $this->handleIdentifier($id);
-
-        // Add numerical priority allowing easy sorting.
-        $this->priority = array_search($this->type, $orderedRemediation);
     }
 
     public function getDuration(): string
@@ -54,11 +47,6 @@ class Decision
     public function getOrigin(): string
     {
         return $this->origin;
-    }
-
-    public function getPriority(): int
-    {
-        return $this->priority;
     }
 
     public function getScope(): string
@@ -84,7 +72,6 @@ class Decision
             'scope' => $this->getScope(),
             'value' => $this->getValue(),
             'type' => $this->getType(),
-            'priority' => $this->getPriority(),
             'duration' => $this->getDuration(),
         ];
     }

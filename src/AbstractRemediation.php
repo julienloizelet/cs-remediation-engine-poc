@@ -145,7 +145,6 @@ abstract class AbstractRemediation
         string $type = Constants::REMEDIATION_BYPASS
     ): Decision {
         return new Decision(
-            $this,
             $scope,
             $value,
             $type,
@@ -161,12 +160,27 @@ abstract class AbstractRemediation
      */
     protected function sortDecisionsByRemediationPriority(array $decisions): array
     {
+        // Add priorities
+        $orderedRemediations = $this->getConfig('ordered_remediations', CapiRemediation::ORDERED_REMEDIATIONS);
+        $fallback = $this->getConfig('fallback_remediation', Constants::REMEDIATION_BYPASS);
+        $decisionsWithPriority = [];
+        foreach ($decisions as $decision) {
+            $priority = array_search($decision[AbstractCache::INDEX_VALUE], $orderedRemediations);
+            // Use fallback for unknown remediation
+            if (false === $priority) {
+                $priority = array_search($fallback, $orderedRemediations);
+                $decision[AbstractCache::INDEX_VALUE] = $fallback;
+            }
+            $decision[AbstractCache::INDEX_PRIO] = $priority;
+            $decisionsWithPriority[] = $decision;
+        }
+
         // Sort by priorities.
         /** @var callable $compareFunction */
         $compareFunction = self::class . '::comparePriorities';
-        usort($decisions, $compareFunction);
+        usort($decisionsWithPriority, $compareFunction);
 
-        return $decisions;
+        return $decisionsWithPriority;
     }
 
     /**
@@ -190,7 +204,6 @@ abstract class AbstractRemediation
     private function convertRawDecision(array $rawDecision): Decision
     {
         return new Decision(
-            $this,
             $rawDecision['scope'],
             $rawDecision['value'],
             $rawDecision['type'],
