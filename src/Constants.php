@@ -32,4 +32,6 @@ class Constants
     public const SCOPE_IP = 'ip';
     /** @var string The CrowdSec Range scope for decisions */
     public const SCOPE_RANGE = 'range';
+    /** @var string The current version of this library */
+    public const VERSION = 'v0.0.1';
 }

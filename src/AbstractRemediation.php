@@ -144,7 +144,16 @@ abstract class AbstractRemediation
         string $value,
         string $type = Constants::REMEDIATION_BYPASS
     ): Decision {
-        return new Decision($this, $scope, $value, $type, Constants::ORIGIN, '', '', 0);
+        return new Decision(
+            $this,
+            $scope,
+            $value,
+            $type,
+            Constants::ORIGIN,
+            '',
+            Constants::VERSION,
+            0
+        );
     }
 
     /**

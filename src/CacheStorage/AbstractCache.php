@@ -36,7 +36,7 @@ abstract class AbstractCache
     /** @var int Cache item content array expiration index */
     private const INDEX_EXP = 1;
     /** @var int Cache item content array identifier index */
-    private const INDEX_ID = 2;
+    public const INDEX_ID = 2;
     /** @var int Cache item content array priority index */
     public const INDEX_PRIO = 3;
     /** @var int Cache item content array value index */

@@ -6,7 +6,7 @@ namespace CrowdSec\RemediationEngine;
 
 class Decision
 {
-    private const ID_SEP = '-';
+    public const ID_SEP = '-';
     private $duration;
     private $identifier;
     private $origin;
@@ -41,15 +41,6 @@ class Decision
         $this->priority = array_search($this->type, $orderedRemediation);
     }
 
-    private function handleIdentifier(int $id): string
-    {
-        return $id > 0 ? (string) $id :
-            $this->origin . self::ID_SEP .
-            $this->type . self::ID_SEP .
-            $this->scope . self::ID_SEP .
-            $this->value;
-    }
-
     public function getDuration(): string
     {
         return $this->duration;
@@ -58,6 +49,11 @@ class Decision
     public function getIdentifier(): string
     {
         return $this->identifier;
+    }
+
+    public function getOrigin(): string
+    {
+        return $this->origin;
     }
 
     public function getPriority(): int
@@ -80,11 +76,6 @@ class Decision
         return $this->value;
     }
 
-    public function getOrigin(): string
-    {
-        return $this->origin;
-    }
-
     public function toArray(): array
     {
         return [
@@ -96,5 +87,14 @@ class Decision
             'priority' => $this->getPriority(),
             'duration' => $this->getDuration(),
         ];
+    }
+
+    private function handleIdentifier(int $id): string
+    {
+        return $id > 0 ? (string) $id :
+            $this->origin . self::ID_SEP .
+            $this->type . self::ID_SEP .
+            $this->scope . self::ID_SEP .
+            $this->value;
     }
 }

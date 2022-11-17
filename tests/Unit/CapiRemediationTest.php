@@ -22,6 +22,7 @@ use CrowdSec\RemediationEngine\CacheStorage\PhpFiles;
 use CrowdSec\RemediationEngine\CacheStorage\Redis;
 use CrowdSec\RemediationEngine\CapiRemediation;
 use CrowdSec\RemediationEngine\Constants;
+use CrowdSec\RemediationEngine\Decision;
 use CrowdSec\RemediationEngine\Logger\FileLog;
 use CrowdSec\RemediationEngine\Tests\Constants as TestConstants;
 use CrowdSec\RemediationEngine\Tests\MockedData;
@@ -336,6 +337,14 @@ final class CapiRemediationTest extends AbstractRemediation
             1,
             $cachedValue[0][AbstractCache::INDEX_PRIO],
             'Remediation should have been cached with correct priority'
+        );
+        $this->assertEquals(
+            Constants::ORIGIN. Decision::ID_SEP .
+            Constants::REMEDIATION_BYPASS . Decision::ID_SEP .
+            Constants::SCOPE_IP . Decision::ID_SEP .
+            TestConstants::IP_V4,
+            $cachedValue[0][AbstractCache::INDEX_ID],
+            'Remediation should have been cached with correct identifier'
         );
         // Test 2
         $result = $remediation->getIpRemediation(TestConstants::IP_V4);
