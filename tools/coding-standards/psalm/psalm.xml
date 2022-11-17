@@ -25,6 +25,11 @@
                 <referencedClass name="Predis\ClientInterface"/>
             </errorLevel>
         </UndefinedDocblockClass>
+        <UndefinedClass>
+            <errorLevel type="info">
+                <referencedClass name="Predis\ClientInterface"/>
+            </errorLevel>
+        </UndefinedClass>
         <UndefinedInterfaceMethod>
             <errorLevel type="info">
                 <referencedMethod name="Psr\Cache\CacheItemInterface::tag"/>
@@ -34,6 +39,7 @@
             <errorLevel type="suppress">
                 <referencedMethod name="Symfony\Component\Config\Definition\Builder\NodeDefinition::arrayNode"/>
                 <referencedMethod name="Symfony\Component\Config\Definition\Builder\NodeParentInterface::end"/>
+                <referencedMethod name="Symfony\Component\Config\Definition\Builder\VariableNodeDefinition::arrayNode"/>
             </errorLevel>
         </PossiblyUndefinedMethod>
     </issueHandlers>
