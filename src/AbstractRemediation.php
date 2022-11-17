@@ -152,7 +152,7 @@ abstract class AbstractRemediation
         );
     }
 
-    protected function createBypassDecision(string $scope, string $value):Decision
+    protected function createBypassDecision(string $scope, string $value): Decision
     {
         return $this->createInternalDecision($scope, $value, Constants::REMEDIATION_BYPASS);
     }

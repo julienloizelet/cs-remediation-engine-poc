@@ -39,8 +39,8 @@ class Capi implements ConfigurationInterface
                 ->ifArray()
                 ->then(function (array $remediations) {
                     // Remove Bypass
-                    foreach ($remediations as $key => $remediation){
-                        if($remediation === Constants::REMEDIATION_BYPASS){
+                    foreach ($remediations as $key => $remediation) {
+                        if ($remediation === Constants::REMEDIATION_BYPASS) {
                             unset($remediations[$key]);
                         }
                     }
