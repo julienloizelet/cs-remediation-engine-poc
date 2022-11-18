@@ -27,12 +27,6 @@ abstract class AbstractCache
     public const DEFER = 'deferred';
     /** @var string Internal name for effective saved cache item (not deferred) */
     public const DONE = 'done';
-    /**
-     * @var int Maximum duration for a cache item
-     *          Forever is 10 years as PHP_INT_MAX will cause trouble with the Memcached Adapter
-     *          (int to float unwanted conversion)
-     */
-    private const FOREVER = 315360000;
     /** @var int Cache item content array expiration index */
     private const INDEX_EXP = 1;
     /** @var int Cache item content array identifier index */
@@ -137,10 +131,9 @@ abstract class AbstractCache
     }
 
     /**
-     * Retrieve a config value by name.
+     * Retrieve a config value by name. Return null if no set.
      *
-     * @param mixed $default
-     *
+     * @param string $name
      * @return mixed
      */
     public function getConfig(string $name)

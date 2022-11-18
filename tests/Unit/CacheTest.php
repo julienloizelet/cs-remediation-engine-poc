@@ -217,6 +217,32 @@ final class CacheTest extends TestCase
                 'Should throw error if try to prune'
             );
         }
+        // cleanCachedValues
+        $cachedValues = [
+            [
+                'ban',
+                911125444, //  Sunday 15 November 1998 10:24:04 (expired)
+                'CAPI-ban-range-52.3.230.0/24',
+                0,
+            ],
+            [
+                'ban',
+                5897183044, //  Monday 15 November 2156 10:24:04 (not expired)
+                'CAPI-ban-range-52.3.230.0/24',
+                0,
+            ],
+        ];
+        $result = $this->cacheStorage->cleanCachedValues($cachedValues);
+        $this->assertEquals(
+            ['1' => [
+                'ban',
+                5897183044,
+                'CAPI-ban-range-52.3.230.0/24',
+                0,
+            ]],
+            $result,
+            'Should return correct maximum'
+        );
     }
 
     public function testCacheKey()
@@ -346,36 +372,6 @@ final class CacheTest extends TestCase
         );
         $this->assertEquals(
             1668577970,
-            $result,
-            'Should return correct maximum'
-        );
-        // cleanCachedValues
-        $cachedValues = [
-            [
-                'ban',
-                911125444, //  Sunday 15 November 1998 10:24:04 (expired)
-                'CAPI-ban-range-52.3.230.0/24',
-                0,
-            ],
-            [
-                'ban',
-                5897183044, //  Monday 15 November 2156 10:24:04 (not expired, I guess)
-                'CAPI-ban-range-52.3.230.0/24',
-                0,
-            ],
-        ];
-        $result = PHPUnitUtil::callMethod(
-            $this->cacheStorage,
-            'cleanCachedValues',
-            [$cachedValues]
-        );
-        $this->assertEquals(
-            ['1' => [
-                'ban',
-                5897183044,
-                'CAPI-ban-range-52.3.230.0/24',
-                0,
-            ]],
             $result,
             'Should return correct maximum'
         );

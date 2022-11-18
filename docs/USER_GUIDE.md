@@ -62,9 +62,14 @@ composer require crowdsec/remediation-engine
 
 Please see the [Installation Guide](./INSTALLATION_GUIDE.md) for mor details.
 
-### CapiRemediation instantiation
+### Capi Remediation
 
-To instantiate a CapiRemediation object, you have to:
+To retrieve decisions from CAPI and determine which remediation should apply to an IP, we use the 
+`CapiRemediation` class.
+
+#### Instantiation
+
+To instantiate a `CapiRemediation` object, you have to:
 
 - Pass its `configs` array as a first parameter. You will find below [the list of other available
   settings](#remediation-engine-configurations).
@@ -98,15 +103,15 @@ $clientConfigs = [
 ];
 $capiClient = new Watcher($clientConfigs, new FileStorage(), null, $logger);
 // Init PhpFiles cache storage
-$cacheFileConfigs = [
+$cacheConfigs = [
     'fs_cache_path' => __DIR__ . '/.cache',
 ];
-$phpFileCache = new PhpFiles($cacheFileConfigs, $logger);
+$phpFileCache = new PhpFiles($cacheConfigs, $logger);
 // Init CAPI remediation
 $remediationConfigs = [];
 $remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $phpFileCache, $logger);
 ```
-#### CapiRemediation features
+#### Features
 
 Once your CAPI remediation engine is instantiated, you can perform the following calls:
 
@@ -152,6 +157,32 @@ $remediationEngine->pruneCache();
 
 Unlike Memcached and Redis, there is no PhpFiles pruning mechanism that automatically removes expired items.
 Thus, if you are using the PhpFiles cache, you should use this method.
+
+
+#### Stream mode and example scripts
+
+The CAPI remediation engine is intended to work asynchronously: this is what we call the `stream mode`: 
+
+1) CAPI decisions should be retrieved via a background task (CRON) and stored in cache.
+
+2) To retrieve a remediation for an IP, we are asking the cache and not CAPI directly.
+
+- For the first point, you should create a php script that will be call by a cron task.
+
+You will find an example of such a script with the `tests/scripts/refresh-decisions-capi.php` file.
+
+As we recommend to ask CAPI every 2 hours for fresh decisions, you may have to use this kind of crontab configuration: 
+
+```
+0 */2 * * * www-data /usr/bin/php /path/to/the/refresh-decisions-capi.php
+```
+
+- For the second point, you should have look to the `tests/scripts/get-remediation-capi.php` example.
+
+
+- Depending on your need, you could also have to clear or prune the cache (by CRON or on demand). You will find two 
+example scripts for that : `tests/scripts/clear-cache-capi.php` and `tests/scripts/prune-cache-capi.php`.
+
 
 
 ## Remediation engine configurations
@@ -201,3 +232,42 @@ If you set some value, be aware to include this value in the `ordered_remediatio
 In the example above, if a retrieved decision has a `mfa` type, the `ban` fallback will be use instead.
 
 ## Cache configurations
+
+If you use one of our provided cache storage handler (`CacheStorage\PhpFiles`,  `CacheStorage\Memcached` or 
+`CacheStorage\Redis`), you will need to pass a `$cacheConfigs` array as first parameter:
+
+### PhpFiles cache files directory
+
+```php
+$cacheConfigs = [
+        ... 
+        'fs_cache_path' => __DIR__ . '/.cache'
+        ...
+];
+```
+
+This setting is required and cannot be empty.
+
+### Redis cache DSN
+
+```php
+$cacheConfigs = [
+        ... 
+        'redis_dsn' => 'redis://localhost:6379'
+        ...
+];
+```
+
+This setting is required and cannot be empty.
+
+### Memcached cache DSN
+
+```php
+$cacheConfigs = [
+        ... 
+        'memcached_dsn' => 'memcached://localhost:11211'
+        ...
+];
+```
+
+This setting is required and cannot be empty.

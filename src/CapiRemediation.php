@@ -53,6 +53,7 @@ class CapiRemediation extends AbstractRemediation
         );
 
         if (!$allDecisions) {
+            // As CAPI is always in stream_mode, we do not store this bypass
             return Constants::REMEDIATION_BYPASS;
         }
 

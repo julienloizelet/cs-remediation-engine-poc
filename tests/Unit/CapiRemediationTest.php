@@ -283,27 +283,34 @@ final class CapiRemediationTest extends AbstractRemediation
         // Prepare next tests
         $this->cacheStorage->method('retrieveDecisionsForIp')->will(
             $this->onConsecutiveCalls(
-                [],  // Test 1 : retrieve IP
-                [],  // Test 1 : retrieve Range
+                [],  // Test 1 : retrieve empty IP decisions
+                [],  // Test 1 : retrieve empty range decisions
                 [[[
                     'bypass',
                     999999999999,
                     'remediation-engine-bypass-ip-1.2.3.4',
                     0,
-                ]]], // Test 2 : retrieve cached first bypass
-                [],  // Test 2 : retrieve Range
+                ]]], // Test 2 : retrieve cached bypass
+                [],  // Test 2 : retrieve empty range
                 [[[
                     'bypass',
                     999999999999,
                     'remediation-engine-bypass-ip-1.2.3.4',
                     1,
-                ]]], // Test 3 : retrieve bypass
+                ]]], // Test 3 : retrieve bypass for ip
                 [[[
                     'ban',
                     999999999999,
                     'remediation-engine-ban-ip-1.2.3.4',
                     0,
-                ]]]  // Test 3 : retrieve ban
+                ]]],  // Test 3 : retrieve ban for range
+                [[[
+                    'ban',
+                    311738199, //  Sunday 18 November 1979
+                    'remediation-engine-ban-ip-1.2.3.4',
+                    0,
+                ]]], // Test 4 : retrieve expired ban ip
+                []  // Test 4 : retrieve empty range
             )
         );
         // Test 1
@@ -335,6 +342,13 @@ final class CapiRemediationTest extends AbstractRemediation
             Constants::REMEDIATION_BAN,
             $result,
             'Remediations should be ordered by priority'
+        );
+        // Test 4
+        $result = $remediation->getIpRemediation(TestConstants::IP_V4);
+        $this->assertEquals(
+            Constants::REMEDIATION_BYPASS,
+            $result,
+            'Expired cached remediations should have been cleaned'
         );
     }
 
