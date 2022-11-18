@@ -27,20 +27,20 @@ abstract class AbstractCache
     public const DEFER = 'deferred';
     /** @var string Internal name for effective saved cache item (not deferred) */
     public const DONE = 'done';
+    /** @var int Cache item content array main value index */
+    public const INDEX_MAIN = 0;
+    /** @var string The cache key prefix for a IPV4 range bucket */
+    public const IPV4_BUCKET_KEY = 'range_bucket_ipv4';
+    /** @var string Cache tag for remediation */
+    private const CACHE_TAG_REM = 'remediation';
     /** @var int Cache item content array expiration index */
     private const INDEX_EXP = 1;
     /** @var int Cache item content array identifier index */
-    public const INDEX_ID = 2;
-    /** @var int Cache item content array main value index */
-    public const INDEX_MAIN = 0;
-    /** @var int Priority index */
-    public const INDEX_PRIO = 3;
-    /** @var string The cache key prefix for a IPV4 range bucket */
-    public const IPV4_BUCKET_KEY = 'RANGE_BUCKET_IPV4';
+    private const INDEX_ID = 2;
     /** @var int The size of ipv4 range cache bucket */
-    public const IPV4_BUCKET_SIZE = 256;
+    private const IPV4_BUCKET_SIZE = 256;
     /** @var string The cache tag for range bucket cache item */
-    private const RANGE_BUCKET_TAG = 'RANGE_BUCKET';
+    private const RANGE_BUCKET_TAG = 'range_bucket';
     /** @var AdapterInterface */
     protected $adapter;
     /**
@@ -320,7 +320,7 @@ abstract class AbstractCache
      */
     private function getTags(Decision $decision, ?int $bucketInt = null): array
     {
-        return $bucketInt ? [self::RANGE_BUCKET_TAG] : [Constants::CACHE_TAG_REM, $decision->getScope()];
+        return $bucketInt ? [self::RANGE_BUCKET_TAG] : [self::CACHE_TAG_REM, $decision->getScope()];
     }
 
     /**

@@ -21,6 +21,7 @@ use CrowdSec\RemediationEngine\CacheStorage\Memcached;
 use CrowdSec\RemediationEngine\CacheStorage\PhpFiles;
 use CrowdSec\RemediationEngine\CacheStorage\Redis;
 use CrowdSec\RemediationEngine\CapiRemediation;
+use CrowdSec\RemediationEngine\AbstractRemediation as LibAbstractRemediation;
 use CrowdSec\RemediationEngine\Constants;
 use CrowdSec\RemediationEngine\Logger\FileLog;
 use CrowdSec\RemediationEngine\Tests\Constants as TestConstants;
@@ -453,14 +454,14 @@ final class CapiRemediationTest extends AbstractRemediation
             'ban',
             1668577960,
             'CAPI-ban-range-52.3.230.0/24',
-            0,
+            LibAbstractRemediation::INDEX_PRIO =>  0,
         ];
 
         $b = [
             'ban',
             1668577960,
             'CAPI-ban-range-52.3.230.0/24',
-            0,
+            LibAbstractRemediation::INDEX_PRIO => 0,
         ];
         $result = PHPUnitUtil::callMethod(
             $remediation,
@@ -478,14 +479,14 @@ final class CapiRemediationTest extends AbstractRemediation
             'ban',
             1668577960,
             'CAPI-ban-range-52.3.230.0/24',
-            0,
+            LibAbstractRemediation::INDEX_PRIO => 0,
         ];
 
         $b = [
             'bypass',
             1668577960,
             'CAPI-ban-range-52.3.230.0/24',
-            1,
+            LibAbstractRemediation::INDEX_PRIO => 1,
         ];
         $result = PHPUnitUtil::callMethod(
             $remediation,

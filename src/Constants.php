@@ -20,8 +20,6 @@ class Constants
     public const REMEDIATION_BAN = 'ban';
     /** @var string The bypass remediation */
     public const REMEDIATION_BYPASS = 'bypass';
-    /** @var string Cache tag for remediation */
-    public const CACHE_TAG_REM = 'remediation';
     /** @var int The default duration we keep a bad IP in cache */
     public const CACHE_EXPIRATION_FOR_BAD_IP = 120;
     /** @var int The default duration we keep a clean IP in cache */

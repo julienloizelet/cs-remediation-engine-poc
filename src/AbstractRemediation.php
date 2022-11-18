@@ -17,6 +17,8 @@ abstract class AbstractRemediation
     public const CS_DEL = 'deleted';
     /** @var string The CrowdSec name for new decisions */
     public const CS_NEW = 'new';
+    /** @var string Priority index */
+    public const INDEX_PRIO = 'priority';
     /**
      * @var AbstractCache
      */
@@ -157,7 +159,7 @@ abstract class AbstractRemediation
                 $priority = array_search($fallback, $orderedRemediations);
                 $decision[AbstractCache::INDEX_MAIN] = $fallback;
             }
-            $decision[AbstractCache::INDEX_PRIO] = $priority;
+            $decision[self::INDEX_PRIO] = $priority;
             $decisionsWithPriority[] = $decision;
         }
         // Sort by priorities.
@@ -177,8 +179,8 @@ abstract class AbstractRemediation
      */
     private static function comparePriorities(array $a, array $b): int
     {
-        $a = $a[AbstractCache::INDEX_PRIO];
-        $b = $b[AbstractCache::INDEX_PRIO];
+        $a = $a[self::INDEX_PRIO];
+        $b = $b[self::INDEX_PRIO];
         if ($a == $b) {
             return 0;
         }
@@ -186,9 +188,45 @@ abstract class AbstractRemediation
         return ($a < $b) ? -1 : 1;
     }
 
-    private function handleDecisionScope(string $scope): string
+    private function convertRawDecision(array $rawDecision): ?Decision
     {
-        return strtolower($scope);
+        if (!$this->validateRawDecision($rawDecision)) {
+            return null;
+        }
+        // The existence of the following indexes must be guaranteed by the validateRawDecision method
+        $value = $rawDecision['value'];
+        $type = $rawDecision['type'];
+        $origin = $rawDecision['origin'];
+        $duration = $rawDecision['duration'];
+        $scope = $this->handleDecisionScope($rawDecision['scope']);
+        // The id index exists for raw LAPI decisions but not for CAPI ones
+        $id = $rawDecision['id'] ?? 0;
+
+        return new Decision(
+            $this->handleDecisionIdentifier($origin, $type, $scope, $value, $id),
+            $scope,
+            $value,
+            $type,
+            $origin,
+            $this->handleDecisionExpiresAt($type, $duration)
+        );
+    }
+
+    private function handleDecisionExpiresAt(string $type, string $duration): int
+    {
+        switch ($type) {
+            case Constants::REMEDIATION_BYPASS:
+                $duration = $this->getConfig('clean_ip_cache_duration');
+                break;
+            default:
+                $duration = $this->parseDurationToSeconds($duration);
+                if (!$this->getConfig('stream_mode')) {
+                    $duration = min((int) $this->getConfig('bad_ip_cache_duration'), $duration);
+                }
+                break;
+        }
+
+        return time() + (int) $duration;
     }
 
     private function handleDecisionIdentifier(
@@ -207,6 +245,11 @@ abstract class AbstractRemediation
             $type . Decision::ID_SEP .
             $this->handleDecisionScope($scope) . Decision::ID_SEP .
             $value;
+    }
+
+    private function handleDecisionScope(string $scope): string
+    {
+        return strtolower($scope);
     }
 
     private function parseDurationToSeconds(string $duration): int
@@ -244,47 +287,6 @@ abstract class AbstractRemediation
         }
 
         return (int) round($seconds);
-    }
-
-    private function handleDecisionExpiresAt(string $type, string $duration): int
-    {
-        switch ($type) {
-            case Constants::REMEDIATION_BYPASS:
-                $duration = $this->getConfig('clean_ip_cache_duration');
-                break;
-            default:
-                $duration = $this->parseDurationToSeconds($duration);
-                if (!$this->getConfig('stream_mode')) {
-                    $duration = min((int) $this->getConfig('bad_ip_cache_duration'), $duration);
-                }
-                break;
-        }
-
-        return time() + (int) $duration;
-    }
-
-    private function convertRawDecision(array $rawDecision): ?Decision
-    {
-        if (!$this->validateRawDecision($rawDecision)) {
-            return null;
-        }
-        // The existence of the following indexes must be guaranteed by the validateRawDecision method
-        $value = $rawDecision['value'];
-        $type = $rawDecision['type'];
-        $origin = $rawDecision['origin'];
-        $duration = $rawDecision['duration'];
-        $scope = $this->handleDecisionScope($rawDecision['scope']);
-        // The id index exists for raw LAPI decisions but not for CAPI ones
-        $id = $rawDecision['id'] ?? 0;
-
-        return new Decision(
-            $this->handleDecisionIdentifier($origin, $type, $scope, $value, $id),
-            $scope,
-            $value,
-            $type,
-            $origin,
-            $this->handleDecisionExpiresAt($type, $duration)
-        );
     }
 
     private function validateRawDecision(array $rawDecision): bool

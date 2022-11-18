@@ -29,34 +29,33 @@ abstract class AbstractRemediation implements ConfigurationInterface
     {
         $rootNode->children()
             ->scalarNode('fallback_remediation')
-            ->defaultValue(Constants::REMEDIATION_BYPASS)
+                ->defaultValue(Constants::REMEDIATION_BYPASS)
             ->end()
             ->arrayNode('ordered_remediations')->cannotBeEmpty()
-            ->validate()
-            ->ifArray()
-            ->then(function (array $remediations) {
-                // Remove bypass if any
-                foreach ($remediations as $key => $remediation) {
-                    if (Constants::REMEDIATION_BYPASS === $remediation) {
-                        unset($remediations[$key]);
+                ->validate()
+                ->ifArray()
+                ->then(function (array $remediations) {
+                    // Remove bypass if any
+                    foreach ($remediations as $key => $remediation) {
+                        if (Constants::REMEDIATION_BYPASS === $remediation) {
+                            unset($remediations[$key]);
+                        }
                     }
-                }
-                // Add bypass as the lowest priority remediation
-                $remediations = array_merge($remediations, [Constants::REMEDIATION_BYPASS]);
+                    // Add bypass as the lowest priority remediation
+                    $remediations = array_merge($remediations, [Constants::REMEDIATION_BYPASS]);
 
-                return array_values(array_unique($remediations));
-            })
-            ->end()
-            ->scalarPrototype()->cannotBeEmpty()
-            ->end()
-            ->defaultValue(array_merge(CapiRemediation::ORDERED_REMEDIATIONS, [Constants::REMEDIATION_BYPASS]))
+                    return array_values(array_unique($remediations));
+                })
+                ->end()
+                ->scalarPrototype()->cannotBeEmpty()->end()
+                ->defaultValue(array_merge(CapiRemediation::ORDERED_REMEDIATIONS, [Constants::REMEDIATION_BYPASS]))
             ->end()
             ->booleanNode('stream_mode')->defaultTrue()->end()
             ->integerNode('clean_ip_cache_duration')
-            ->min(1)->defaultValue(Constants::CACHE_EXPIRATION_FOR_CLEAN_IP)
+                ->min(1)->defaultValue(Constants::CACHE_EXPIRATION_FOR_CLEAN_IP)
             ->end()
             ->integerNode('bad_ip_cache_duration')
-            ->min(1)->defaultValue(Constants::CACHE_EXPIRATION_FOR_BAD_IP)
+                ->min(1)->defaultValue(Constants::CACHE_EXPIRATION_FOR_BAD_IP)
             ->end()
         ->end();
     }
