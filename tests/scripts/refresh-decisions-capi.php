@@ -36,5 +36,5 @@ $redisCache = new Redis($cacheRedisConfigs, $logger);
 // Init CAPI remediation
 $remediationConfigs = [];
 $remediationEngine = new CapiRemediation($remediationConfigs, $capiClient, $phpFileCache, $logger);
-// Retrieve fresh decisions from CAPI
+// Retrieve fresh decisions from CAPI and update the cache
 echo json_encode($remediationEngine->refreshDecisions()) . \PHP_EOL;
