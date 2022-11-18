@@ -37,10 +37,10 @@ abstract class AbstractCache
     private const INDEX_EXP = 1;
     /** @var int Cache item content array identifier index */
     public const INDEX_ID = 2;
-    /** @var int Cache item content array priority index */
+    /** @var int Cache item content array main value index */
+    public const INDEX_MAIN = 0;
+    /** @var int Priority index */
     public const INDEX_PRIO = 3;
-    /** @var int Cache item content array value index */
-    public const INDEX_VALUE = 0;
     /** @var string The cache key prefix for a IPV4 range bucket */
     public const IPV4_BUCKET_KEY = 'RANGE_BUCKET_IPV4';
     /** @var int The size of ipv4 range cache bucket */
@@ -73,6 +73,19 @@ abstract class AbstractCache
         $this->logger = $logger;
     }
 
+    public function cleanCachedValues(array $cachedValues): array
+    {
+        foreach ($cachedValues as $key => $cachedValue) {
+            // Remove expired value
+            $currentTime = time();
+            if ($currentTime > $cachedValue[self::INDEX_EXP]) {
+                unset($cachedValues[$key]);
+            }
+        }
+
+        return $cachedValues;
+    }
+
     /**
      * Deletes all items in the pool.
      */
@@ -92,19 +105,6 @@ abstract class AbstractCache
     public function getAdapter(): AdapterInterface
     {
         return $this->adapter;
-    }
-
-    public function saveDeferred(CacheItemInterface $item): bool
-    {
-        return $this->adapter->saveDeferred($item);
-    }
-
-    /**
-     * @throws InvalidArgumentException
-     */
-    public function getItem(string $cacheKey): CacheItemInterface
-    {
-        return $this->adapter->getItem(base64_encode($cacheKey));
     }
 
     /**
@@ -143,9 +143,17 @@ abstract class AbstractCache
      *
      * @return mixed
      */
-    public function getConfig(string $name, $default = null)
+    public function getConfig(string $name)
     {
-        return (isset($this->configs[$name])) ? $this->configs[$name] : $default;
+        return (isset($this->configs[$name])) ? $this->configs[$name] : null;
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function getItem(string $cacheKey): CacheItemInterface
+    {
+        return $this->adapter->getItem(base64_encode($cacheKey));
     }
 
     /**
@@ -208,7 +216,7 @@ abstract class AbstractCache
                 $bucketItem = $this->getItem($bucketCacheKey);
                 $cachedBuckets = $bucketItem->isHit() ? $bucketItem->get() : [];
                 foreach ($cachedBuckets as $cachedBucket) {
-                    $rangeString = $cachedBucket[self::INDEX_VALUE];
+                    $rangeString = $cachedBucket[self::INDEX_MAIN];
                     $address = Factory::parseAddressString($ip);
                     $range = Factory::parseRangeString($rangeString);
                     if ($address && $range && $range->contains($address)) {
@@ -231,12 +239,9 @@ abstract class AbstractCache
         return $cachedDecisions;
     }
 
-    /**
-     * @codeCoverageIgnore
-     */
-    public function setStreamMode(bool $value): void
+    public function saveDeferred(CacheItemInterface $item): bool
     {
-        $this->configs['stream_mode'] = $value;
+        return $this->adapter->saveDeferred($item);
     }
 
     /**
@@ -263,95 +268,18 @@ abstract class AbstractCache
         return $result;
     }
 
-    protected function parseDurationToSeconds(string $duration): int
-    {
-        /**
-         * 3h24m59.5565s or 3h24m5957ms or 149h, etc.
-         */
-        $re = '/(-?)(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)(?:\.\d+)?(m?)s)?/m';
-        preg_match($re, $duration, $matches);
-        if (empty($matches[0])) {
-            $this->logger->error('', [
-                'type' => 'CACHE_DURATION_PARSE_ERROR',
-                'duration' => $duration,
-            ]);
-
-            return 0;
-        }
-        $seconds = 0;
-        if (isset($matches[2])) {
-            $seconds += ((int) $matches[2]) * 3600; // hours
-        }
-        if (isset($matches[3])) {
-            $seconds += ((int) $matches[3]) * 60; // minutes
-        }
-        $secondsPart = 0;
-        if (isset($matches[4])) {
-            $secondsPart += ((int) $matches[4]); // seconds
-        }
-        if (isset($matches[5]) && 'm' === $matches[5]) { // units in milliseconds
-            $secondsPart *= 0.001;
-        }
-        $seconds += $secondsPart;
-        if ('-' === $matches[1]) { // negative
-            $seconds *= -1;
-        }
-
-        return (int) round($seconds);
-    }
-
-    private function cleanCachedValues(array $cachedValues): array
-    {
-        foreach ($cachedValues as $key => $cachedValue) {
-            // Remove expired value
-            $currentTime = time();
-            if ($currentTime > $cachedValue[self::INDEX_EXP]) {
-                unset($cachedValues[$key]);
-            }
-        }
-
-        return $cachedValues;
-    }
-
     /**
      * Format decision to use a minimal amount of data (less cache data consumption).
      *
      * @throws \Exception
      */
-    private function format(Decision $decision): array
+    private function format(Decision $decision, ?int $bucketInt = null): array
     {
-        $streamMode = $this->getConfig('stream_mode', false);
-        if (Constants::REMEDIATION_BYPASS === $decision->getType()) {
-            /**
-             * In stream mode we consider a clean IP forever (until the next cache refresh).
-             */
-            /** @var int $duration */
-            $duration = $streamMode ? self::FOREVER : $this->getConfig('clean_ip_cache_duration', 0);
-
-            return [
-                self::INDEX_VALUE => Constants::REMEDIATION_BYPASS,
-                self::INDEX_EXP => time() + $duration,
-                self::INDEX_ID => $decision->getIdentifier(),
-            ];
-        }
+        $mainValue = $bucketInt ? $decision->getValue() : $decision->getType();
 
         return [
-            self::INDEX_VALUE => $decision->getType(),
-            self::INDEX_EXP => time() + $this->handleBadIpDuration($decision, $streamMode),
-            self::INDEX_ID => $decision->getIdentifier(),
-        ];
-    }
-
-    /**
-     * Format range to use a minimal amount of data (less cache data consumption).
-     */
-    private function formatIpV4Range(Decision $decision): array
-    {
-        $streamMode = $this->getConfig('stream_mode', false);
-
-        return [
-            self::INDEX_VALUE => $decision->getValue(),
-            self::INDEX_EXP => time() + $this->handleBadIpDuration($decision, $streamMode),
+            self::INDEX_MAIN => $mainValue,
+            self::INDEX_EXP => $decision->getExpiresAt(),
             self::INDEX_ID => $decision->getIdentifier(),
         ];
     }
@@ -368,7 +296,8 @@ abstract class AbstractCache
 
     private function getMaxExpiration(array $itemsToCache): int
     {
-        return max(array_column($itemsToCache, self::INDEX_EXP));
+        $exps = array_column($itemsToCache, self::INDEX_EXP);
+        return $exps ? max($exps) : 0;
     }
 
     /**
@@ -399,20 +328,6 @@ abstract class AbstractCache
     private function getTags(Decision $decision, ?int $bucketInt = null): array
     {
         return $bucketInt ? [self::RANGE_BUCKET_TAG] : [Constants::CACHE_TAG_REM, $decision->getScope()];
-    }
-
-    private function handleBadIpDuration(Decision $decision, bool $streamMode): int
-    {
-        $duration = $this->parseDurationToSeconds($decision->getDuration());
-        /**
-         * Don't set a custom duration in stream mode to avoid bugs.
-         * Only the stream update has to change the cache state.
-         */
-        if (!$streamMode) {
-            $duration = min($this->getConfig('bad_ip_cache_duration', 0), $duration);
-        }
-
-        return $duration;
     }
 
     /**
@@ -532,7 +447,7 @@ abstract class AbstractCache
         $cachedValues = $this->cleanCachedValues($cachedValues);
 
         // Merge current value with cached values (if any).
-        $currentValue = $bucketInt ? $this->formatIpV4Range($decision) : $this->format($decision);
+        $currentValue = $this->format($decision, $bucketInt);
         $decisionsToCache = array_merge($cachedValues, [$currentValue]);
         // Rebuild cache item
         $item = $this->updateCacheItem($item, $decisionsToCache, $this->getTags($decision, $bucketInt));

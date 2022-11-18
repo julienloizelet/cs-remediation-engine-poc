@@ -30,7 +30,6 @@ class Memcached extends AbstractCache implements ConfigurationInterface
             ->scalarNode('memcached_dsn')->isRequired()->cannotBeEmpty()->end()
         ->end()
         ;
-        $this->addCommonNodes($rootNode);
 
         return $treeBuilder;
     }

@@ -7,36 +7,50 @@ namespace CrowdSec\RemediationEngine;
 class Decision
 {
     public const ID_SEP = '-';
-    private $duration;
+    /**
+     * @var int
+     */
+    private $expiresAt;
+    /**
+     * @var string
+     */
     private $identifier;
+    /**
+     * @var string
+     */
     private $origin;
-    private $scenario;
+    /**
+     * @var string
+     */
     private $scope;
+    /**
+     * @var string
+     */
     private $type;
+    /**
+     * @var string
+     */
     private $value;
 
     public function __construct(
+        string $identifier,
         string $scope,
         string $value,
         string $type,
         string $origin,
-        string $duration,
-        string $scenario,
-        int $id = 0
+        int $expiresAt
     ) {
-        $this->scope = strtolower($scope);
+        $this->identifier = $identifier;
+        $this->scope = $scope;
         $this->value = $value;
-        $this->origin = $origin;
-        $this->duration = $duration;
-        $this->scenario = $scenario;
-
         $this->type = $type;
-        $this->identifier = $this->handleIdentifier($id);
+        $this->origin = $origin;
+        $this->expiresAt = $expiresAt;
     }
 
-    public function getDuration(): string
+    public function getExpiresAt(): int
     {
-        return $this->duration;
+        return $this->expiresAt;
     }
 
     public function getIdentifier(): string
@@ -72,16 +86,7 @@ class Decision
             'scope' => $this->getScope(),
             'value' => $this->getValue(),
             'type' => $this->getType(),
-            'duration' => $this->getDuration(),
+            'expiresAt' => $this->getExpiresAt(),
         ];
-    }
-
-    private function handleIdentifier(int $id): string
-    {
-        return $id > 0 ? (string) $id :
-            $this->origin . self::ID_SEP .
-            $this->type . self::ID_SEP .
-            $this->scope . self::ID_SEP .
-            $this->value;
     }
 }

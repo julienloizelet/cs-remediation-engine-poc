@@ -29,9 +29,9 @@ use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 
 /**
- * @covers \CrowdSec\RemediationEngine\Configuration\Capi::validate
+ * @covers \CrowdSec\RemediationEngine\Configuration\AbstractRemediation::validateCommon
  * @covers \CrowdSec\RemediationEngine\Configuration\Capi::getConfigTreeBuilder
- * @covers \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
+ * @covers \CrowdSec\RemediationEngine\Configuration\AbstractRemediation::addCommonNodes
  * @covers \CrowdSec\RemediationEngine\Configuration\Cache\Redis::getConfigTreeBuilder
  * @covers \CrowdSec\RemediationEngine\Configuration\Cache\Memcached::getConfigTreeBuilder
  * @covers \CrowdSec\RemediationEngine\Configuration\Cache\PhpFiles::getConfigTreeBuilder
@@ -48,6 +48,9 @@ final class ConfigurationTest extends TestCase
         $result = $processor->processConfiguration($configuration, [$configs]);
         $this->assertEquals(
             [
+                'stream_mode' => true,
+                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
+                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
                 'fallback_remediation' => 'bypass',
                 'ordered_remediations' => array_merge(
                     CapiRemediation::ORDERED_REMEDIATIONS, [Constants::REMEDIATION_BYPASS]
@@ -61,6 +64,9 @@ final class ConfigurationTest extends TestCase
         $result = $processor->processConfiguration($configuration, [$configs]);
         $this->assertEquals(
             [
+                'stream_mode' => true,
+                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
+                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
                 'fallback_remediation' => 'bypass',
                 'ordered_remediations' => ['rem1', 'rem2', 'bypass'],
             ],
@@ -71,8 +77,11 @@ final class ConfigurationTest extends TestCase
         $result = $processor->processConfiguration($configuration, [$configs]);
         $this->assertEquals(
             [
+                'stream_mode' => true,
+                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
+                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
                 'fallback_remediation' => 'bypass',
-                'ordered_remediations' => ['rem1', 'rem2', 'rem3', 'rem4','bypass'],
+                'ordered_remediations' => ['rem1', 'rem2', 'rem3', 'rem4', 'bypass'],
             ],
             $result,
             'Should add bypass with the lowest priority'
@@ -82,6 +91,9 @@ final class ConfigurationTest extends TestCase
         $result = $processor->processConfiguration($configuration, [$configs]);
         $this->assertEquals(
             [
+                'stream_mode' => true,
+                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
+                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
                 'fallback_remediation' => 'bypass',
                 'ordered_remediations' => ['ban', 'captcha', 'bypass'],
             ],
@@ -129,9 +141,6 @@ final class ConfigurationTest extends TestCase
         $result = $processor->processConfiguration($configuration, [$configs]);
         $this->assertEquals(
             [
-                'stream_mode' => false,
-                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
-                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
                 'memcached_dsn' => 'memcached_dsn_test',
             ],
             $result,
@@ -179,9 +188,6 @@ final class ConfigurationTest extends TestCase
         $result = $processor->processConfiguration($configuration, [$configs]);
         $this->assertEquals(
             [
-                'stream_mode' => false,
-                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
-                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
                 'fs_cache_path' => 'fs_cache_path_test',
             ],
             $result,
@@ -229,9 +235,6 @@ final class ConfigurationTest extends TestCase
         $result = $processor->processConfiguration($configuration, [$configs]);
         $this->assertEquals(
             [
-                'stream_mode' => false,
-                'clean_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
-                'bad_ip_cache_duration' => Constants::CACHE_EXPIRATION_FOR_BAD_IP,
                 'redis_dsn' => 'redis_dsn_test',
             ],
             $result,

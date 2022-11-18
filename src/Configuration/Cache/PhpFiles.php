@@ -29,7 +29,6 @@ class PhpFiles extends AbstractCache implements ConfigurationInterface
         $rootNode->children()
             ->scalarNode('fs_cache_path')->isRequired()->cannotBeEmpty()->end()
         ->end();
-        $this->addCommonNodes($rootNode);
 
         return $treeBuilder;
     }

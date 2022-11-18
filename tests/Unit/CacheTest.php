@@ -28,13 +28,10 @@ use org\bovigo\vfs\vfsStream;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::setCustomErrorHandler
- * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::unsetCustomErrorHandler
- * @uses \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
+ * @uses \CrowdSec\RemediationEngine\Logger\FileLog::__construct
  * @uses \CrowdSec\RemediationEngine\Configuration\Cache\Memcached::getConfigTreeBuilder
  * @uses \CrowdSec\RemediationEngine\Configuration\Cache\PhpFiles::getConfigTreeBuilder
  * @uses \CrowdSec\RemediationEngine\Configuration\Cache\Redis::getConfigTreeBuilder
- * @uses \CrowdSec\RemediationEngine\Logger\FileLog::__construct
  *
  * @covers \CrowdSec\RemediationEngine\CacheStorage\Memcached::clear
  * @covers \CrowdSec\RemediationEngine\CacheStorage\Memcached::commit
@@ -51,7 +48,6 @@ use PHPUnit\Framework\TestCase;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\PhpFiles::configure
  * @covers \CrowdSec\RemediationEngine\CacheStorage\Redis::configure
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getCacheKey
- * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::parseDurationToSeconds
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::manageRange
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getMaxExpiration
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::cleanCachedValues
@@ -59,7 +55,6 @@ use PHPUnit\Framework\TestCase;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getCachedIndex
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getItem
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getTags
- * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleBadIpDuration
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::retrieveDecisionsForIp
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::saveDeferred
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::store
@@ -67,7 +62,6 @@ use PHPUnit\Framework\TestCase;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::updateCacheItem
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::remove
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::removeDecision
- * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::formatIpV4Range
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getRangeIntForIp
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleRangeScoped
  */
@@ -133,12 +127,37 @@ final class CacheTest extends TestCase
                     get_class($this->cacheStorage->getAdapter()),
                     'Adapter should be as expected'
                 );
+                $this->assertEquals(
+                    $this->root->url(),
+                    $this->cacheStorage->getConfig('fs_cache_path'),
+                    'Should get config'
+                );
+                $this->assertNull(
+                    $this->cacheStorage->getConfig('redis_dsn'),
+                    'Should get null config'
+                );
+                $this->assertNull(
+                    $this->cacheStorage->getConfig('memcached_dsn'),
+                    'Should get null config'
+                );
                 break;
             case 'RedisAdapter':
                 $this->assertEquals(
                     'Symfony\Component\Cache\Adapter\RedisTagAwareAdapter',
                     get_class($this->cacheStorage->getAdapter()),
                     'Adapter should be as expected'
+                );
+                $this->assertNull(
+                    $this->cacheStorage->getConfig('fs_cache_path'),
+                    'Should get null config'
+                );
+                $this->assertNull(
+                    $this->cacheStorage->getConfig('memcached_dsn'),
+                    'Should get null config'
+                );
+                $this->assertNotEmpty(
+                    $this->cacheStorage->getConfig('redis_dsn'),
+                    'Should get config'
                 );
                 break;
             case 'MemcachedAdapter':
@@ -147,16 +166,22 @@ final class CacheTest extends TestCase
                     get_class($this->cacheStorage->getAdapter()),
                     'Adapter should be as expected'
                 );
+                $this->assertNull(
+                    $this->cacheStorage->getConfig('fs_cache_path'),
+                    'Should get null config'
+                );
+                $this->assertNull(
+                    $this->cacheStorage->getConfig('redis_dsn'),
+                    'Should get null config'
+                );
+                $this->assertNotEmpty(
+                    $this->cacheStorage->getConfig('memcached_dsn'),
+                    'Should get config'
+                );
                 break;
             default:
                 throw new \Exception('Unknown $type:' . $cacheType);
         }
-
-        $this->assertEquals(
-            Constants::CACHE_EXPIRATION_FOR_CLEAN_IP,
-            $this->cacheStorage->getConfig('clean_ip_cache_duration'),
-            'Should set default config'
-        );
 
         $result = $this->cacheStorage->commit();
         $this->assertEquals(
@@ -201,7 +226,6 @@ final class CacheTest extends TestCase
         $this->phpFileStorage = new PhpFiles($cachePhpfilesConfigs);
         $this->setCache('PhpFilesAdapter');
 
-
         $cacheKey = $this->cacheStorage->getCacheKey('ip', '1.2.3.4');
 
         $this->assertEquals(
@@ -242,88 +266,7 @@ final class CacheTest extends TestCase
     public function testPrivateOrProtectedMethods()
     {
         $this->setCache('PhpFilesAdapter');
-        // parseDurationToSeconds
-        $result = PHPUnitUtil::callMethod(
-            $this->cacheStorage,
-            'parseDurationToSeconds',
-            ['1h']
-        );
-        $this->assertEquals(
-            3600,
-            $result,
-            'Should convert in seconds'
-        );
 
-        $result = PHPUnitUtil::callMethod(
-            $this->cacheStorage,
-            'parseDurationToSeconds',
-            ['147h']
-        );
-        $this->assertEquals(
-            3600 * 147,
-            $result,
-            'Should convert in seconds'
-        );
-
-        $result = PHPUnitUtil::callMethod(
-            $this->cacheStorage,
-            'parseDurationToSeconds',
-            ['147h23m43s']
-        );
-        $this->assertEquals(
-            3600 * 147 + 23 * 60 + 43,
-            $result,
-            'Should convert in seconds'
-        );
-
-        $result = PHPUnitUtil::callMethod(
-            $this->cacheStorage,
-            'parseDurationToSeconds',
-            ['147h23m43000.5665ms']
-        );
-        $this->assertEquals(
-            3600 * 147 + 23 * 60 + 43,
-            $result,
-            'Should convert in seconds'
-        );
-
-        $result = PHPUnitUtil::callMethod(
-            $this->cacheStorage,
-            'parseDurationToSeconds',
-            ['23m43s']
-        );
-        $this->assertEquals(
-            23 * 60 + 43,
-            $result,
-            'Should convert in seconds'
-        );
-        $result = PHPUnitUtil::callMethod(
-            $this->cacheStorage,
-            'parseDurationToSeconds',
-            ['-23m43s']
-        );
-        $this->assertEquals(
-            -23 * 60 - 43,
-            $result,
-            'Should convert in seconds'
-        );
-
-        $result = PHPUnitUtil::callMethod(
-            $this->cacheStorage,
-            'parseDurationToSeconds',
-            ['abc']
-        );
-        $this->assertEquals(
-            0,
-            $result,
-            'Should return 0 on bad format'
-        );
-        PHPUnitUtil::assertRegExp(
-            $this,
-            '/.*400.*"type":"CACHE_DURATION_PARSE_ERROR"/',
-            file_get_contents($this->root->url() . '/' . $this->prodFile),
-            'Prod log content should be correct'
-        );
         // manageRange
         $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
             ->disableOriginalConstructor()
@@ -461,7 +404,7 @@ final class CacheTest extends TestCase
 
         $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
             ->disableOriginalConstructor()
-            ->onlyMethods(['getValue', 'getType', 'getDuration', 'getScope', 'getIdentifier'])
+            ->onlyMethods(['getValue', 'getType', 'getExpiresAt', 'getScope', 'getIdentifier'])
             ->getMock();
         $decision->method('getValue')->will(
             $this->returnValue(
@@ -473,9 +416,9 @@ final class CacheTest extends TestCase
                 Constants::REMEDIATION_BAN
             )
         );
-        $decision->method('getDuration')->will(
+        $decision->method('getExpiresAt')->will(
             $this->returnValue(
-                '147h'
+                4824410199
             )
         );
         $decision->method('getScope')->will(
@@ -519,7 +462,7 @@ final class CacheTest extends TestCase
 
         $decision = $this->getMockBuilder('CrowdSec\RemediationEngine\Decision')
             ->disableOriginalConstructor()
-            ->onlyMethods(['getValue', 'getType', 'getDuration', 'getScope', 'getIdentifier'])
+            ->onlyMethods(['getValue', 'getType', 'getExpiresAt', 'getScope', 'getIdentifier'])
             ->getMock();
         $decision->method('getValue')->will(
             $this->returnValue(
@@ -531,9 +474,9 @@ final class CacheTest extends TestCase
                 Constants::REMEDIATION_BAN
             )
         );
-        $decision->method('getDuration')->will(
+        $decision->method('getExpiresAt')->will(
             $this->returnValue(
-                '147h'
+                4824410199
             )
         );
         $decision->method('getScope')->will(

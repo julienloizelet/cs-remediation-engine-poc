@@ -27,9 +27,9 @@ class CapiRemediation extends AbstractRemediation
         AbstractCache $cacheStorage,
         LoggerInterface $logger = null
     ) {
+        // Force stream mode for CAPI remediation
+        $configs['stream_mode'] = true;
         $this->configure($configs);
-        // Force stream mode for CAPI remediation cache
-        $cacheStorage->setStreamMode(true);
         $this->client = $client;
         parent::__construct($this->configs, $cacheStorage, $logger);
     }
@@ -53,17 +53,15 @@ class CapiRemediation extends AbstractRemediation
         );
 
         if (!$allDecisions) {
-            // Store a bypass remediation if no cached decision found
-            $decision = $this->createBypassDecision(Constants::SCOPE_IP, $ip);
-            $this->storeDecisions([$decision]);
-
             return Constants::REMEDIATION_BYPASS;
         }
+
+        $allDecisions = $this->cacheStorage->cleanCachedValues($allDecisions);
 
         $allDecisions = $this->sortDecisionsByRemediationPriority($allDecisions);
 
         // Return only a remediation with the highest priority
-        return $allDecisions[0][AbstractCache::INDEX_VALUE] ?? Constants::REMEDIATION_BYPASS;
+        return $allDecisions[0][AbstractCache::INDEX_MAIN] ?? Constants::REMEDIATION_BYPASS;
     }
 
     /**

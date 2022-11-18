@@ -22,7 +22,6 @@ use CrowdSec\RemediationEngine\CacheStorage\PhpFiles;
 use CrowdSec\RemediationEngine\CacheStorage\Redis;
 use CrowdSec\RemediationEngine\CapiRemediation;
 use CrowdSec\RemediationEngine\Constants;
-use CrowdSec\RemediationEngine\Decision;
 use CrowdSec\RemediationEngine\Logger\FileLog;
 use CrowdSec\RemediationEngine\Tests\Constants as TestConstants;
 use CrowdSec\RemediationEngine\Tests\MockedData;
@@ -34,36 +33,34 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::__construct
  * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::cleanCachedValues
  * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getAdapter
- * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getConfig
  * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getMaxExpiration
- * @uses \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::parseDurationToSeconds
  * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::__construct
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::clear
+ * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::commit
  * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::configure
- * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::setCustomErrorHandler
- * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::unsetCustomErrorHandler
  * @uses \CrowdSec\RemediationEngine\CacheStorage\PhpFiles::__construct
  * @uses \CrowdSec\RemediationEngine\CacheStorage\PhpFiles::configure
  * @uses \CrowdSec\RemediationEngine\CacheStorage\Redis::__construct
  * @uses \CrowdSec\RemediationEngine\CacheStorage\Redis::configure
- * @uses \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
- * @uses \CrowdSec\RemediationEngine\Configuration\AbstractCache::addCommonNodes
+ * @uses \CrowdSec\RemediationEngine\Configuration\AbstractRemediation::addCommonNodes
  * @uses \CrowdSec\RemediationEngine\Configuration\Cache\Memcached::getConfigTreeBuilder
  * @uses \CrowdSec\RemediationEngine\Configuration\Cache\PhpFiles::getConfigTreeBuilder
  * @uses \CrowdSec\RemediationEngine\Configuration\Cache\Redis::getConfigTreeBuilder
- * @uses \CrowdSec\RemediationEngine\Configuration\Capi::validate
- * @uses \CrowdSec\RemediationEngine\Logger\FileLog::__construct
- * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::clear
- * @uses \CrowdSec\RemediationEngine\CacheStorage\Memcached::commit
+ * @uses \CrowdSec\RemediationEngine\Configuration\AbstractRemediation::validateCommon
  * @uses \CrowdSec\RemediationEngine\Decision::getOrigin
  * @uses \CrowdSec\RemediationEngine\Decision::toArray
+ * @uses \CrowdSec\RemediationEngine\Logger\FileLog::__construct
  *
+ * @covers \CrowdSec\RemediationEngine\Decision::getExpiresAt
  * @covers \CrowdSec\RemediationEngine\AbstractRemediation::__construct
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::handleDecisionScope
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::handleDecisionIdentifier
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::parseDurationToSeconds
+ * @covers \CrowdSec\RemediationEngine\AbstractRemediation::handleDecisionExpiresAt
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::__construct
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::configure
  * @covers \CrowdSec\RemediationEngine\AbstractRemediation::getConfig
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::getIpRemediation
- * @covers \CrowdSec\RemediationEngine\CapiRemediation::createInternalDecision
- * @covers \CrowdSec\RemediationEngine\AbstractRemediation::createBypassDecision
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::storeDecisions
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::sortDecisionsByRemediationPriority
  * @covers \CrowdSec\RemediationEngine\CapiRemediation::refreshDecisions
@@ -72,7 +69,6 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::clear
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::commit
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::format
- * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::formatIpV4Range
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getCacheKey
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getCachedIndex
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getRangeIntForIp
@@ -83,16 +79,13 @@ use org\bovigo\vfs\vfsStreamDirectory;
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::storeDecision
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::updateCacheItem
  * @covers \CrowdSec\RemediationEngine\Decision::__construct
- * @covers \CrowdSec\RemediationEngine\Decision::getDuration
  * @covers \CrowdSec\RemediationEngine\Decision::getIdentifier
  * @covers \CrowdSec\RemediationEngine\Decision::getScope
  * @covers \CrowdSec\RemediationEngine\Decision::getType
  * @covers \CrowdSec\RemediationEngine\Decision::getValue
- * @covers \CrowdSec\RemediationEngine\Decision::handleIdentifier
  * @covers \CrowdSec\RemediationEngine\AbstractRemediation::comparePriorities
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::manageRange
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::saveDeferred
- * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::handleBadIpDuration
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getTags
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::getItem
  * @covers \CrowdSec\RemediationEngine\CacheStorage\AbstractCache::retrieveDecisionsForIp
@@ -164,7 +157,7 @@ final class CapiRemediationTest extends AbstractRemediation
         $this->watcher = $this->getWatcherMock();
 
         $cachePhpfilesConfigs = ['fs_cache_path' => $this->root->url()];
-        $mockedMethods = ['retrieveDecisionsForIp', 'setStreamMode'];
+        $mockedMethods = ['retrieveDecisionsForIp'];
         $this->phpFileStorage = $this->getCacheMock('PhpFilesAdapter', $cachePhpfilesConfigs, $this->logger, $mockedMethods);
         $cacheMemcachedConfigs = [
             'memcached_dsn' => getenv('memcached_dsn') ?: 'memcached://memcached:11211',
@@ -266,14 +259,16 @@ final class CapiRemediationTest extends AbstractRemediation
     {
         $this->setCache($cacheType);
 
-        $remediationConfigs = [];
-        // Test that cache is forced to stream mode
-        $this->cacheStorage->expects($this->exactly(1))
-            ->method('setStreamMode')
-            ->with(true);
+        $remediationConfigs = ['stream_mode' => false];
 
         // Test with null logger
         $remediation = new CapiRemediation($remediationConfigs, $this->watcher, $this->cacheStorage, null);
+        // Test is forced to stream mode
+        $this->assertEquals(
+            true,
+            $remediation->getConfig('stream_mode'),
+            'Stream mode must be true'
+        );
         // Test default configs
         $this->assertEquals(
             Constants::REMEDIATION_BYPASS,
@@ -322,25 +317,11 @@ final class CapiRemediationTest extends AbstractRemediation
         $adapter = $this->cacheStorage->getAdapter();
         $item = $adapter->getItem(base64_encode(TestConstants::IP_V4_CACHE_KEY));
         $this->assertEquals(
-            true,
+            false,
             $item->isHit(),
-            'Remediation should have been cached'
+            'Remediation should not have been cached'
         );
 
-        $cachedValue = $item->get();
-        $this->assertEquals(
-            Constants::REMEDIATION_BYPASS,
-            $cachedValue[0][AbstractCache::INDEX_VALUE],
-            'Remediation should have been cached with correct value'
-        );
-        $this->assertEquals(
-            Constants::ORIGIN . Decision::ID_SEP .
-            Constants::REMEDIATION_BYPASS . Decision::ID_SEP .
-            Constants::SCOPE_IP . Decision::ID_SEP .
-            TestConstants::IP_V4,
-            $cachedValue[0][AbstractCache::INDEX_ID],
-            'Remediation should have been cached with correct identifier'
-        );
         // Test 2
         $result = $remediation->getIpRemediation(TestConstants::IP_V4);
         $this->assertEquals(
@@ -373,7 +354,6 @@ final class CapiRemediationTest extends AbstractRemediation
                 'type' => 'ban',
                 'origin' => 'unit',
                 'duration' => '147h',
-                'scenario' => '',
             ],
         ];
         $result = PHPUnitUtil::callMethod(
@@ -397,7 +377,7 @@ final class CapiRemediationTest extends AbstractRemediation
         $this->assertEquals(
             'ip',
             $decision->getScope(),
-            'Should have created a correct decision'
+            'Should have created a normalized scope'
         );
         // Test 2: bad raw decision
         $rawDecisions = [
@@ -423,6 +403,35 @@ final class CapiRemediationTest extends AbstractRemediation
             '/.*300.*"type":"RAW_DECISION_NOT_AS_EXPECTED"/',
             file_get_contents($this->root->url() . '/' . $this->prodFile),
             'Prod log content should be correct'
+        );
+        // Test 3 : with id
+        $rawDecisions = [
+            [
+                'scope' => 'IP',
+                'value' => '1.2.3.4',
+                'type' => 'ban',
+                'origin' => 'unit',
+                'duration' => '147h',
+                'id' => 42,
+            ],
+        ];
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'convertRawDecisionsToDecisions',
+            [$rawDecisions]
+        );
+
+        $this->assertCount(
+            1,
+            $result,
+            'Should return array'
+        );
+
+        $decision = $result[0];
+        $this->assertEquals(
+            '42',
+            $decision->getIdentifier(),
+            'Should have created a correct decision with id'
         );
 
         // comparePriorities
@@ -562,6 +571,100 @@ final class CapiRemediationTest extends AbstractRemediation
             $result[0][0],
             'Should return highest priority (fallback captcha > ban)'
         );
+        // Test 4 : empty
+        $decisions = [];
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'sortDecisionsByRemediationPriority',
+            [$decisions]
+        );
+        $this->assertCount(
+            0,
+            $result,
+            'Should return empty'
+        );
+        // handleDecisionExpiresAt
+        $remediation = $this->getMockBuilder('CrowdSec\RemediationEngine\CapiRemediation')
+            ->setConstructorArgs([
+                'configs' => $remediationConfigs,
+                'client' => $this->watcher,
+                'cacheStorage' => $this->cacheStorage,
+                'logger' => $this->logger, ])
+            ->onlyMethods(['getConfig'])
+            ->getMock();
+
+        $remediation->method('getConfig')
+            ->will($this->returnValueMap([
+                ['stream_mode', true],
+                ['clean_ip_cache_duration', Constants::CACHE_EXPIRATION_FOR_CLEAN_IP],
+                ['bad_ip_cache_duration', Constants::CACHE_EXPIRATION_FOR_BAD_IP],
+            ]));
+        // Test 1: bypass
+        $type = Constants::REMEDIATION_BYPASS;
+        $duration = '147h';
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'handleDecisionExpiresAt',
+            [$type, $duration]
+        );
+        $this->assertTrue(
+            (time() + Constants::CACHE_EXPIRATION_FOR_CLEAN_IP) === $result,
+            'Should return current time + clean ip duration config'
+        );
+
+        // Test 2 : ban in stream mode
+        $type = Constants::REMEDIATION_BAN;
+        $duration = '147h';
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'handleDecisionExpiresAt',
+            [$type, $duration]
+        );
+        $this->assertTrue(
+            (time() + 147 * 60 * 60) === $result,
+            'Should return current time + decision duration'
+        );
+
+        // Test 3: ban in live mode
+        $remediation = $this->getMockBuilder('CrowdSec\RemediationEngine\CapiRemediation')
+            ->setConstructorArgs([
+                'configs' => $remediationConfigs,
+                'client' => $this->watcher,
+                'cacheStorage' => $this->cacheStorage,
+                'logger' => $this->logger, ])
+            ->onlyMethods(['getConfig'])
+            ->getMock();
+
+        $remediation->method('getConfig')
+            ->will($this->returnValueMap([
+                ['stream_mode', false],
+                ['clean_ip_cache_duration', Constants::CACHE_EXPIRATION_FOR_CLEAN_IP],
+                ['bad_ip_cache_duration', Constants::CACHE_EXPIRATION_FOR_BAD_IP],
+            ]));
+        $type = Constants::REMEDIATION_BAN;
+        $duration = '147h';
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'handleDecisionExpiresAt',
+            [$type, $duration]
+        );
+        $this->assertTrue(
+            (time() + Constants::CACHE_EXPIRATION_FOR_BAD_IP) === $result,
+            'Should return current time + bad ip duration config'
+        );
+
+        // Test 4: ban in live mode with duration < bad ip duration config
+        $type = Constants::REMEDIATION_BAN;
+        $duration = '15s';
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'handleDecisionExpiresAt',
+            [$type, $duration]
+        );
+        $this->assertTrue(
+            (time() + 15) === $result,
+            'Should return current time + decision duration'
+        );
     }
 
     /**
@@ -608,7 +711,7 @@ final class CapiRemediationTest extends AbstractRemediation
         $cachedValue = $item->get();
         $this->assertEquals(
             Constants::REMEDIATION_BAN,
-            $cachedValue[0][AbstractCache::INDEX_VALUE],
+            $cachedValue[0][AbstractCache::INDEX_MAIN],
             'Remediation should have been cached with correct value'
         );
         // Test 2
@@ -777,6 +880,88 @@ final class CapiRemediationTest extends AbstractRemediation
         PHPUnitUtil::assertRegExp(
             $this,
             '/.*300.*"type":"IPV6_RANGE_NOT_IMPLEMENTED"/',
+            file_get_contents($this->root->url() . '/' . $this->prodFile),
+            'Prod log content should be correct'
+        );
+        // parseDurationToSeconds
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'parseDurationToSeconds',
+            ['1h']
+        );
+        $this->assertEquals(
+            3600,
+            $result,
+            'Should convert in seconds'
+        );
+
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'parseDurationToSeconds',
+            ['147h']
+        );
+        $this->assertEquals(
+            3600 * 147,
+            $result,
+            'Should convert in seconds'
+        );
+
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'parseDurationToSeconds',
+            ['147h23m43s']
+        );
+        $this->assertEquals(
+            3600 * 147 + 23 * 60 + 43,
+            $result,
+            'Should convert in seconds'
+        );
+
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'parseDurationToSeconds',
+            ['147h23m43000.5665ms']
+        );
+        $this->assertEquals(
+            3600 * 147 + 23 * 60 + 43,
+            $result,
+            'Should convert in seconds'
+        );
+
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'parseDurationToSeconds',
+            ['23m43s']
+        );
+        $this->assertEquals(
+            23 * 60 + 43,
+            $result,
+            'Should convert in seconds'
+        );
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'parseDurationToSeconds',
+            ['-23m43s']
+        );
+        $this->assertEquals(
+            -23 * 60 - 43,
+            $result,
+            'Should convert in seconds'
+        );
+
+        $result = PHPUnitUtil::callMethod(
+            $remediation,
+            'parseDurationToSeconds',
+            ['abc']
+        );
+        $this->assertEquals(
+            0,
+            $result,
+            'Should return 0 on bad format'
+        );
+        PHPUnitUtil::assertRegExp(
+            $this,
+            '/.*400.*"type":"DECISION_DURATION_PARSE_ERROR"/',
             file_get_contents($this->root->url() . '/' . $this->prodFile),
             'Prod log content should be correct'
         );

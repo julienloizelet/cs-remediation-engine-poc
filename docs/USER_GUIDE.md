@@ -200,3 +200,4 @@ If you set some value, be aware to include this value in the `ordered_remediatio
 
 In the example above, if a retrieved decision has a `mfa` type, the `ban` fallback will be use instead.
 
+## Cache configurations

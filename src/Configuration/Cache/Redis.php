@@ -30,7 +30,6 @@ class Redis extends AbstractCache implements ConfigurationInterface
             ->scalarNode('redis_dsn')->isRequired()->cannotBeEmpty()->end()
         ->end()
         ;
-        $this->addCommonNodes($rootNode);
 
         return $treeBuilder;
     }
