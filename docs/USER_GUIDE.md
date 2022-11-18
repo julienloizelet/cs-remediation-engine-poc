@@ -152,14 +152,16 @@ The CAPI remediation engine is intended to work asynchronously: this is what we 
 
 2) To retrieve a remediation for an IP, we are asking the cache and not CAPI directly.
 
-- For the first point, you should create a php script that will be call by a cron task.
+
+
+- For the first point, you should create a php script that will be called by a cron task.
 
 You will find an example of such a script with the `tests/scripts/refresh-decisions-capi.php` file.
 
 As we recommend to ask CAPI every 2 hours for fresh decisions, you may have to use this kind of crontab configuration: 
 
 ```
-0 */2 * * * www-data /usr/bin/php /path/to/the/refresh-decisions-capi.php
+0 */2 * * * www-data /usr/bin/php /path/to/refresh-decisions-capi.php
 ```
 
 - For the second point, you should have look to the `tests/scripts/get-remediation-capi.php` example.
@@ -172,7 +174,7 @@ example scripts for that : `tests/scripts/clear-cache-capi.php` and `tests/scrip
 
 ## Remediation engine configurations
 
-The first parameter `$configs` of the CapiRemediation constructor can be used to pass the following settings:
+The first parameter `$configs` of the `CapiRemediation` constructor can be used to pass the following settings:
 
 ### Remediation priorities
 
@@ -189,7 +191,7 @@ The `ordered_remediations` setting accepts an array of remediations ordered by p
 If there are more than one decision for an IP, remediation with the highest priority will be return.
 
 The specific remediation `bypass` will always be considered as the lowest priority (there is no need to specify it 
-in this config).
+in this setting).
 
 This setting is not required. If you don't set any value, `['ban']` will be used by default.
 
@@ -214,12 +216,12 @@ This setting is not required. If you don't set any value, `'bypass'` will be use
 
 If you set some value, be aware to include this value in the `ordered_remediations` setting too.
 
-In the example above, if a retrieved decision has a `mfa` type, the `ban` fallback will be use instead.
+In the example above, if a retrieved decision has the unknown `mfa` type, the `ban` fallback will be use instead.
 
 ## Cache configurations
 
-If you use one of our provided cache storage handler (`CacheStorage\PhpFiles`,  `CacheStorage\Memcached` or 
-`CacheStorage\Redis`), you will need to pass a `$cacheConfigs` array as first parameter:
+If you use one of our provided cache storage handler (`PhpFiles`,  `Memcached` or 
+`Redis`), you will need to pass a `$cacheConfigs` array as first parameter:
 
 ### PhpFiles cache files directory
 
