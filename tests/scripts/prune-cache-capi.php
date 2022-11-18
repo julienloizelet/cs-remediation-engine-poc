@@ -16,7 +16,7 @@ $clientConfigs = [
     'machine_id_prefix' => 'remediationtest',
     'scenarios' => ['crowdsecurity/http-sensitive-files'],
 ];
-$capiClient = new Watcher($clientConfigs, new FileStorage(), null, $logger);
+$capiClient = new Watcher($clientConfigs, new FileStorage(__DIR__), null, $logger);
 
 // Init PhpFiles cache storage
 $cacheFileConfigs = [
