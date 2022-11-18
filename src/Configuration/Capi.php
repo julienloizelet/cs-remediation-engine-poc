@@ -19,9 +19,6 @@ use Symfony\Component\Config\Definition\Builder\TreeBuilder;
  */
 class Capi extends AbstractRemediation
 {
-    /**
-     * @throws \RuntimeException
-     */
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('config');
